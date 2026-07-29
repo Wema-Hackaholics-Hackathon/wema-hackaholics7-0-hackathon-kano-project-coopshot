@@ -205,6 +205,7 @@ const getGroupById = asyncHandler(async (req, res) => {
     email: m.user.email,
     role: m.role,
     hasPaidThisMonth: paidUserIds.has(m.user.id),
+    joinedAt: m.createdAt,
   }));
 
   const totalCollected = contributions.reduce((sum, c) => sum + Number(c.amount), 0);

@@ -4,8 +4,8 @@
 import { apiFetch } from '@/lib/api';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from './getCurrentUser';
-import { SocietyDocument, SocietyProps } from '@/types';
-import { MOCK_MEMBERS, MOCK_SOCIETIES } from '@/lib/mock-data';
+import { Member, SocietyDocument, SocietyProps } from '@/types';
+import { MOCK_MEMBERS } from '@/lib/mock-data';
 
 function serializeDiscoveredGroup(g: any): SocietyProps {
   return {
@@ -157,6 +157,7 @@ export async function getSociety(id: string): Promise<SocietyProps> {
       name: m.name,
       avatar_url: null,
       role: m.role,
+      joined_at: m.joinedAt,
     })),
   };
 }
@@ -198,11 +199,26 @@ export async function getSocietyMembers(id: string) {
   };
   */
 
-  const society = (await getSociety(id)) || MOCK_SOCIETIES[0];
+  const society = await getSociety(id);
   const userId = user?.id ? Number(user.id) : undefined;
   const isFounder = society.founder?.id === userId;
   const isCoFounder = society.co_founder?.id === userId;
   const isExecutive = false;
+
+  const members: Member[] = (society.active_members || []).map((m) => ({
+    id: m.id,
+    name: m.name,
+    profile: {
+      id: m.id,
+      gender: '',
+      avatar_url: m.avatar_url,
+    },
+    pivot: {
+      role: m.id === society.founder?.id ? 'founder' : m.role === 'admin' ? 'co-founder' : 'member',
+      status: 'active',
+      created_at: m.joined_at || society.created_at,
+    },
+  }));
 
   return {
     society: {
@@ -213,7 +229,7 @@ export async function getSocietyMembers(id: string) {
       isExecutive,
       can_manage: isFounder || isCoFounder || isExecutive,
     },
-    members: MOCK_MEMBERS,
+    members,
   };
 }
 

@@ -43,6 +43,7 @@ export interface SocietyProps {
     name: string;
     avatar_url?: string | null;
     role?: 'admin' | 'member';
+    joined_at?: string;
   }[];
 }
 
