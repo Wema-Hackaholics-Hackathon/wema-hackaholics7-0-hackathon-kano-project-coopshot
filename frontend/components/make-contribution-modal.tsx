@@ -112,7 +112,7 @@ export function MakeContributionModal({
   const [loading, setLoading] = useState(false);
 
   const targetSocietyName = selectedCoop.name;
-  const amount = selectedCoop.settings?.contribution_amount || 300000;
+  const amount = selectedCoop.settings?.contribution_amount ?? 0;
   const frequency = selectedCoop.settings?.frequency || 'monthly';
   const accountNumber = '0123984710';
   const generatedUssdCode = `${selectedUssdBank.code}000*${accountNumber}*${amount}#`;
@@ -210,7 +210,7 @@ export function MakeContributionModal({
             >
               {availableCoops.map((coop) => (
                 <option key={coop.id} value={String(coop.id)}>
-                  {coop.name} — ₦{(coop.settings?.contribution_amount || 300000).toLocaleString()} ({coop.settings?.frequency || 'monthly'})
+                  {coop.name} — ₦{(coop.settings?.contribution_amount ?? 0).toLocaleString()} ({coop.settings?.frequency || 'monthly'})
                 </option>
               ))}
             </select>
