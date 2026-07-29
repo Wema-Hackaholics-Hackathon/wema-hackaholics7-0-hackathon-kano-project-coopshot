@@ -1,7 +1,6 @@
 'use client';
 
 import { FinancialPassport } from '@/types';
-import { MOCK_ACTIVE_SOCIETIES } from '@/lib/mock-data';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,15 +11,25 @@ import {
   IconPlus,
   IconShoppingBag,
 } from '@tabler/icons-react';
-import { MakeContributionModal } from '@/components/make-contribution-modal';
+import { MakeContributionModal, CooperativeOption } from '@/components/make-contribution-modal';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
 interface DashboardActivityWidgetProps {
   passport: FinancialPassport;
+  activeSocieties: {
+    id: string;
+    name: string;
+    settings: { contribution_amount: number; frequency: string };
+  }[];
 }
 
-export function DashboardActivityWidget({ passport }: DashboardActivityWidgetProps) {
+export function DashboardActivityWidget({ passport, activeSocieties }: DashboardActivityWidgetProps) {
+  const cooperatives: CooperativeOption[] = activeSocieties.map((s) => ({
+    id: s.id,
+    name: s.name,
+    settings: s.settings,
+  }));
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
@@ -93,14 +102,25 @@ export function DashboardActivityWidget({ passport }: DashboardActivityWidgetPro
 
         {/* Quick Deposit Trigger & Opportunities Button */}
         <div className='pt-2 border-t flex flex-col gap-2'>
-          <MakeContributionModal
-            cooperatives={MOCK_ACTIVE_SOCIETIES}
-            trigger={
-              <Button className='w-full cursor-pointer gap-2 font-medium shadow-2xs transition-transform active:scale-95'>
-                <IconPlus className='h-4 w-4' /> Make Fast Deposit
-              </Button>
-            }
-          />
+          {cooperatives.length > 0 ? (
+            <MakeContributionModal
+              cooperatives={cooperatives}
+              trigger={
+                <Button className='w-full cursor-pointer gap-2 font-medium shadow-2xs transition-transform active:scale-95'>
+                  <IconPlus className='h-4 w-4' /> Make Fast Deposit
+                </Button>
+              }
+            />
+          ) : (
+            <Button
+              asChild
+              className='w-full cursor-pointer gap-2 font-medium shadow-2xs transition-transform active:scale-95'
+            >
+              <Link href='/dashboard'>
+                <IconPlus className='h-4 w-4' /> Join a Society to Start Saving
+              </Link>
+            </Button>
+          )}
 
           <Button
             asChild

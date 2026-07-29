@@ -156,6 +156,7 @@ export async function getSociety(id: string): Promise<SocietyProps> {
       id: m.userId,
       name: m.name,
       avatar_url: null,
+      role: m.role,
     })),
   };
 }

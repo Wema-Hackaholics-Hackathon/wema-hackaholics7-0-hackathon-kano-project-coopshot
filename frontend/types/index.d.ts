@@ -42,6 +42,7 @@ export interface SocietyProps {
     id: number;
     name: string;
     avatar_url?: string | null;
+    role?: 'admin' | 'member';
   }[];
 }
 

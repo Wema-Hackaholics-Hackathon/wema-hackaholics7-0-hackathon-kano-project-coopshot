@@ -2,12 +2,16 @@
 import { RecommendedSocietiesClient } from '@/components/recommended-societies-client';
 import { PublicSocietiesClient } from '@/components/public-societies-client';
 import { getFinancialPassport } from '@/app/actions/passport';
+import { getMyActiveSocieties } from '@/app/actions/societies';
 import { PassportWidget } from '@/components/passport-widget';
 import { PlatformWalletCard } from '@/components/platform-wallet-card';
 import { DashboardActivityWidget } from '@/components/dashboard-activity-widget';
 
 export default async function Dashboard() {
-  const passport = await getFinancialPassport();
+  const [passport, { active_societies }] = await Promise.all([
+    getFinancialPassport(),
+    getMyActiveSocieties(),
+  ]);
 
   return (
     <div className='flex flex-1 flex-col px-6 py-6 space-y-8'>
@@ -38,7 +42,7 @@ export default async function Dashboard() {
             <PassportWidget passport={passport} />
 
             {/* Interactive Activity & Quick Actions Widget */}
-            <DashboardActivityWidget passport={passport} />
+            <DashboardActivityWidget passport={passport} activeSocieties={active_societies} />
           </div>
         </aside>
       </div>

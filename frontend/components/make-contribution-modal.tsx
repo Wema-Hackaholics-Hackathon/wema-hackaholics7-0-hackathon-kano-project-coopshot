@@ -90,15 +90,34 @@ export function MakeContributionModal({
   cooperatives,
   trigger,
 }: MakeContributionModalProps) {
-  const availableCoops = cooperatives || DEFAULT_COOPERATIVES;
-
-  const initialCoop = society?.name
+  const singleSocietyCoop = society?.name
     ? {
         id: society.id || '1',
         name: society.name,
         settings: society.settings,
       }
-    : availableCoops[0];
+    : null;
+
+  // A specific real society always wins over any generic list — the fake
+  // DEFAULT_COOPERATIVES only apply when this modal is used with no real
+  // data at all (shouldn't happen once every caller passes real data, but
+  // kept as a last-resort so the dialog never renders empty).
+  const availableCoops = singleSocietyCoop
+    ? [singleSocietyCoop]
+    : cooperatives && cooperatives.length > 0
+      ? cooperatives
+      : DEFAULT_COOPERATIVES;
+
+  const initialCoop = singleSocietyCoop || availableCoops[0];
+
+  // Real admins of this society (founder + any co-founder) — this backend has
+  // no separate Treasurer/Secretary title, just admin/member roles.
+  const officers = (society?.active_members ?? [])
+    .filter((m) => m.role === 'admin')
+    .map((m) => ({ id: m.id, name: m.name }));
+  if (officers.length === 0 && society?.founder?.name) {
+    officers.push({ id: society.founder.id, name: society.founder.name });
+  }
 
   const [isOpen, setIsOpen] = useState(false);
   const [selectedCoop, setSelectedCoop] = useState<CooperativeOption>(initialCoop);
@@ -106,7 +125,7 @@ export function MakeContributionModal({
     'bank_transfer' | 'ussd' | 'agent' | 'cash'
   >('bank_transfer');
   const [selectedUssdBank, setSelectedUssdBank] = useState(USSD_BANKS[0]);
-  const [selectedOfficer, setSelectedOfficer] = useState('Adaora Nwosu (Treasurer)');
+  const [selectedOfficer, setSelectedOfficer] = useState(officers[0]?.name ?? '');
   const [cashReceiptNote, setCashReceiptNote] = useState('');
   const [isCopied, setIsCopied] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -425,23 +444,31 @@ export function MakeContributionModal({
           <TabsContent value='cash' className='space-y-4 pt-2'>
             <div className='space-y-4 rounded-xl border bg-card p-5 shadow-2xs'>
               <div className='space-y-2'>
-                <Label className='text-sm font-medium'>Select Receiving Executive Officer</Label>
-                <div className='space-y-2'>
-                  {['Adaora Nwosu (Treasurer)', 'Emeka Okonkwo (Secretary)'].map((off) => (
-                    <div
-                      key={off}
-                      onClick={() => setSelectedOfficer(off)}
-                      className={`p-3 rounded-lg border flex items-center justify-between cursor-pointer text-sm font-medium transition-colors ${
-                        selectedOfficer === off
-                          ? 'border-primary bg-primary/5 text-primary'
-                          : 'border-border bg-background'
-                      }`}
-                    >
-                      <span>{off}</span>
-                      {selectedOfficer === off && <IconCheck className='h-4 w-4 text-primary' />}
-                    </div>
-                  ))}
-                </div>
+                <Label className='text-sm font-medium'>Select Receiving Admin</Label>
+                {officers.length > 0 ? (
+                  <div className='space-y-2'>
+                    {officers.map((off) => (
+                      <div
+                        key={off.id}
+                        onClick={() => setSelectedOfficer(off.name)}
+                        className={`p-3 rounded-lg border flex items-center justify-between cursor-pointer text-sm font-medium transition-colors ${
+                          selectedOfficer === off.name
+                            ? 'border-primary bg-primary/5 text-primary'
+                            : 'border-border bg-background'
+                        }`}
+                      >
+                        <span>{off.name}</span>
+                        {selectedOfficer === off.name && <IconCheck className='h-4 w-4 text-primary' />}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <Input
+                    placeholder="Enter the receiving admin's name"
+                    value={selectedOfficer}
+                    onChange={(e) => setSelectedOfficer(e.target.value)}
+                  />
+                )}
               </div>
 
               <div className='space-y-2'>
@@ -466,7 +493,7 @@ export function MakeContributionModal({
 
             <Button
               onClick={() => handleConfirmPayment('cash')}
-              disabled={loading}
+              disabled={loading || !selectedOfficer.trim()}
               className='w-full cursor-pointer font-semibold'
             >
               {loading ? 'Submitting...' : 'Record Cash Payment to Officer'}
