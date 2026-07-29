@@ -1,4 +1,5 @@
 import { getFinancialPassport } from '@/app/actions/passport';
+import { getMyActiveSocieties } from '@/app/actions/societies';
 import { FinancialPassportCard } from '@/components/financial-passport-card';
 
 export const metadata = {
@@ -7,11 +8,14 @@ export const metadata = {
 };
 
 export default async function FinancialPassportPage() {
-  const passport = await getFinancialPassport();
+  const [passport, { active_societies }] = await Promise.all([
+    getFinancialPassport(),
+    getMyActiveSocieties(),
+  ]);
 
   return (
     <div className='p-6 md:p-8 space-y-6'>
-      <FinancialPassportCard passport={passport} />
+      <FinancialPassportCard passport={passport} activeSocieties={active_societies} />
     </div>
   );
 }

@@ -41,11 +41,20 @@ import {
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
-interface FinancialPassportCardProps {
-  passport: FinancialPassport;
+interface ActiveSociety {
+  id: string;
+  name: string;
+  role: 'founder' | 'member';
+  total_members: number;
+  settings: { contribution_amount: number; frequency: string };
 }
 
-export function FinancialPassportCard({ passport }: FinancialPassportCardProps) {
+interface FinancialPassportCardProps {
+  passport: FinancialPassport;
+  activeSocieties: ActiveSociety[];
+}
+
+export function FinancialPassportCard({ passport, activeSocieties }: FinancialPassportCardProps) {
   const [showCertificate, setShowCertificate] = useState(false);
 
   const handleShare = () => {
@@ -371,41 +380,33 @@ export function FinancialPassportCard({ passport }: FinancialPassportCardProps) 
                 </CardDescription>
               </CardHeader>
               <CardContent className='grid gap-4 md:grid-cols-2'>
-                <div className='rounded-xl border bg-card p-4 space-y-3'>
-                  <div className='flex items-center justify-between'>
-                    <h4 className='font-semibold text-sm text-foreground'>
-                      Victoria Island Savers Guild
-                    </h4>
-                    <Badge variant='default' className='bg-emerald-600 text-white text-[11px]'>
-                      Verified Active
-                    </Badge>
-                  </div>
-                  <p className='text-xs text-muted-foreground'>
-                    Monthly rotating credit group with 12 active members. 100% on-time record.
+                {activeSocieties.length === 0 ? (
+                  <p className='text-sm text-muted-foreground md:col-span-2'>
+                    You haven&apos;t joined any cooperatives yet.
                   </p>
-                  <div className='text-xs pt-2 border-t flex justify-between font-medium text-muted-foreground'>
-                    <span>Role: Founder</span>
-                    <span className='text-foreground font-bold'>₦300,000 / month</span>
-                  </div>
-                </div>
-
-                <div className='rounded-xl border bg-card p-4 space-y-3'>
-                  <div className='flex items-center justify-between'>
-                    <h4 className='font-semibold text-sm text-foreground'>
-                      Tech Founders Investment Circle
-                    </h4>
-                    <Badge variant='default' className='bg-emerald-600 text-white text-[11px]'>
-                      Verified Active
-                    </Badge>
-                  </div>
-                  <p className='text-xs text-muted-foreground'>
-                    Quarterly investment pooling group. Active 5% T-Bill allocation participant.
-                  </p>
-                  <div className='text-xs pt-2 border-t flex justify-between font-medium text-muted-foreground'>
-                    <span>Role: Co-Founder</span>
-                    <span className='text-foreground font-bold'>₦500,000 / quarter</span>
-                  </div>
-                </div>
+                ) : (
+                  activeSocieties.map((society) => (
+                    <div key={society.id} className='rounded-xl border bg-card p-4 space-y-3'>
+                      <div className='flex items-center justify-between'>
+                        <h4 className='font-semibold text-sm text-foreground'>
+                          {society.name}
+                        </h4>
+                        <Badge variant='default' className='bg-emerald-600 text-white text-[11px]'>
+                          Verified Active
+                        </Badge>
+                      </div>
+                      <p className='text-xs text-muted-foreground'>
+                        {society.total_members} active member{society.total_members === 1 ? '' : 's'}.
+                      </p>
+                      <div className='text-xs pt-2 border-t flex justify-between font-medium text-muted-foreground'>
+                        <span>Role: {society.role === 'founder' ? 'Founder' : 'Member'}</span>
+                        <span className='text-foreground font-bold'>
+                          ₦{society.settings.contribution_amount.toLocaleString()} / {society.settings.frequency}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -498,8 +499,8 @@ export function FinancialPassportCard({ passport }: FinancialPassportCardProps) 
                 <span className='font-bold text-foreground'>₦{passport.total_savings.toLocaleString()}</span>
               </div>
               <div>
-                <span className='text-muted-foreground block'>Repayment Record</span>
-                <span className='font-bold text-emerald-600 dark:text-emerald-400'>100% On-Time</span>
+                <span className='text-muted-foreground block'>Payment Reliability</span>
+                <span className='font-bold text-emerald-600 dark:text-emerald-400'>{passport.repayment_score}%</span>
               </div>
             </div>
 
