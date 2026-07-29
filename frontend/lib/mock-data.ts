@@ -338,9 +338,12 @@ export const MOCK_FINANCIAL_PASSPORT: FinancialPassport = {
   trust_status: 'Verified Community Member',
   consistency_score: 92,
   repayment_score: 100,
+  discipline_score: 88,
   investment_score: 80,
   total_savings: 750000,
   total_contributions: 920000,
+  total_investment_returns: 14500,
+  completed_cycles: 2,
   verified_cooperatives_count: 2,
   milestones: [
     {

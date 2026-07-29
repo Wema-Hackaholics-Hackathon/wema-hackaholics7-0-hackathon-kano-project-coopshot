@@ -5,7 +5,7 @@ import { apiFetch } from '@/lib/api';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from './getCurrentUser';
 import { SocietyDocument, SocietyProps } from '@/types';
-import { MOCK_MEMBERS } from '@/lib/mock-data';
+import { MOCK_MEMBERS, MOCK_SOCIETIES } from '@/lib/mock-data';
 
 function serializeDiscoveredGroup(g: any): SocietyProps {
   return {
