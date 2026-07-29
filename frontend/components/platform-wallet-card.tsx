@@ -23,9 +23,9 @@ interface PlatformWalletCardProps {
 export function PlatformWalletCard({ passport }: PlatformWalletCardProps) {
   const [showBalance, setShowBalance] = useState(true);
 
-  const totalSavings = passport.total_savings || 750000;
-  const investmentReturns = passport.total_investment_returns || 14500;
-  const activeContributions = passport.total_contributions || 920000;
+  const totalSavings = passport.total_savings ?? 0;
+  const investmentReturns = passport.total_investment_returns ?? 0;
+  const activeContributions = passport.total_contributions ?? 0;
   const totalNetAssets = totalSavings + investmentReturns;
 
   const formatAmount = (amount: number) => {

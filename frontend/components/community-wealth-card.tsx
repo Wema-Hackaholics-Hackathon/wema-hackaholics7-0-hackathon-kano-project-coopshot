@@ -56,7 +56,7 @@ export function CommunityWealthCard({
   const canManage = society.can_manage ?? false;
 
   // Calculate dynamic preview stats based on percentage input
-  const totalAssets = cycle.total_pool_assets || 50000000;
+  const totalAssets = cycle.total_pool_assets ?? 0;
   const previewPrincipal = (totalAssets * Math.max(0, allocationPercentage)) / 100;
   const previewExpectedYield = Math.round((previewPrincipal * 0.175 * 91) / 365);
 
