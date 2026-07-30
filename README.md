@@ -12,7 +12,7 @@
 
 *   **Live Application:** [https://coopshot.netlify.app](https://coopshot.netlify.app)
 *   **Backend API:** [https://coopshot.mujaadevs.cloud](https://coopshot.mujaadevs.cloud)
-*   **Recorded Demo:** [Link to your recorded demo explaining how your solution works using Loom].
+*   **Recorded Demo:** [[Link to your recorded demo explaining how your solution works using BANDICAM](https://drive.google.com/file/d/1_wHvDEcECuWeRpAcTn08kCDbusx1GLfu/view?usp=drive_link)].
 
 
 ---
