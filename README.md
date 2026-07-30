@@ -1,5 +1,7 @@
 # CoopShot
 
+### Category: Financial Inclusion
+
 ## Team Members
 - Sodiq Adebayo
 - Muhammad Lawan
