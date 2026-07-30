@@ -34,16 +34,26 @@ function serializeDiscoveredGroup(g: any): SocietyProps {
 export async function getRecommendedSocieties({
   page = 1,
 }: { page?: number } = {}) {
-  const res = await apiFetch(`/groups/recommended?page=${page}`, { method: 'GET', cache: 'no-store' }, true);
-  if (!res.ok) {
-    throw new Error('Failed to fetch recommended societies');
+  try {
+    const res = await apiFetch(`/groups/recommended?page=${page}`, { method: 'GET', cache: 'no-store' }, true);
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        data: (data.data || []).map(serializeDiscoveredGroup),
+        current_page: data.current_page || 1,
+        last_page: data.last_page || 1,
+        total: data.total || 0,
+      };
+    }
+  } catch (err) {
+    console.error('Error fetching recommended societies:', err);
   }
-  const data = await res.json();
+
   return {
-    data: data.data.map(serializeDiscoveredGroup),
-    current_page: data.current_page,
-    last_page: data.last_page,
-    total: data.total,
+    data: [],
+    current_page: 1,
+    last_page: 1,
+    total: 0,
   };
 }
 
@@ -51,23 +61,34 @@ export async function getPublicSocieties({
   search = '',
   page = 1,
 }: { search?: string; page?: number } = {}) {
-  let endpoint = `/groups/public?page=${page}`;
-  if (search.trim()) {
-    endpoint += `&search=${encodeURIComponent(search.trim())}`;
+  try {
+    let endpoint = `/groups/public?page=${page}`;
+    if (search.trim()) {
+      endpoint += `&search=${encodeURIComponent(search.trim())}`;
+    }
+
+    const res = await apiFetch(endpoint, { method: 'GET', cache: 'no-store' }, true);
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        data: (data.data || []).map(serializeDiscoveredGroup),
+        current_page: data.current_page || 1,
+        last_page: data.last_page || 1,
+        total: data.total || 0,
+      };
+    }
+  } catch (err) {
+    console.error('Error fetching public societies:', err);
   }
 
-  const res = await apiFetch(endpoint, { method: 'GET', cache: 'no-store' }, true);
-  if (!res.ok) {
-    throw new Error('Failed to fetch public societies');
-  }
-  const data = await res.json();
   return {
-    data: data.data.map(serializeDiscoveredGroup),
-    current_page: data.current_page,
-    last_page: data.last_page,
-    total: data.total,
+    data: [],
+    current_page: 1,
+    last_page: 1,
+    total: 0,
   };
 }
+
 
 // Join a public society directly — no invite code required. Asusu's original
 // UI has no "join public society" button wired anywhere yet (society-cards.tsx
@@ -89,77 +110,113 @@ export async function joinPublicSociety(societyId: string) {
 // public/private visibility, verification) — the mapping below is best-effort;
 // see asusu/BACKEND_INTEGRATION.md for the exact list of what's real vs mock.
 export async function getSociety(id: string): Promise<SocietyProps> {
-  const res = await apiFetch(`/groups/${id}`, { method: 'GET', cache: 'no-store' }, true);
+  try {
+    const res = await apiFetch(`/groups/${id}`, { method: 'GET', cache: 'no-store' }, true);
 
-  if (!res.ok) {
-    throw new Error('Failed to fetch society');
-  }
-  const group = await res.json();
+    if (!res.ok) {
+      return null as any;
+    }
+    const group = await res.json();
 
-  if (group.membershipStatus === 'pending') {
-    // This backend gates monthly contributions behind a one-time registration
-    // fee that asusu's UI has no concept of yet — surfaced here as best-effort
-    // placeholders rather than crashing the page.
+    const isMember = group.membershipStatus === 'active' || group.membershipStatus === 'pending';
+
+    const hasPaidRegistration = group.hasPaidRegistration !== undefined
+      ? !!group.hasPaidRegistration
+      : (Number(group.registrationFee || 0) === 0);
+
+    const hasPaidEquity = group.hasPaidEquity !== undefined
+      ? !!group.hasPaidEquity
+      : (Number(group.equityAmount || 0) === 0);
+
+    const isPendingRegistration = !hasPaidRegistration;
+    const isPendingEquity = hasPaidRegistration && !hasPaidEquity;
+
+    if (!isMember) {
+      return {
+        id: group.id,
+        name: group.name,
+        avatar_url: group.avatarUrl || '',
+        description: group.description || '',
+        is_public: !!group.isPublic,
+        verified: false,
+        created_at: group.createdAt || new Date().toISOString(),
+        total_members: group.memberCount ?? 0,
+        total_contributions: 0,
+        member_count: group.memberCount ?? 0,
+        can_join: !!group.isPublic && (group.membershipStatus === 'none' || !group.membershipStatus),
+        is_member: false,
+        is_pending_registration: false,
+        is_pending_equity: false,
+        has_paid_registration: false,
+        has_paid_equity: false,
+        can_manage: false,
+        isFounder: false,
+        isCoFounder: false,
+        isExecutive: false,
+        founder: { id: group.creator?.id || 0, name: group.creator?.name || 'Founder' },
+        co_founder: null,
+        settings: {
+          contribution_amount: Number(group.monthlyAmount),
+          registration_fee: Number(group.registrationFee || 0),
+          equity_amount: Number(group.equityAmount || 25000),
+          frequency: 'monthly',
+          payout_cycle: 'fixed',
+          late_fee: 0,
+          loan_multiplier: Number(group.loanMultiplier || 1),
+        },
+      };
+    }
+
     return {
       id: group.id,
       name: group.name,
-      avatar_url: '',
+      avatar_url: group.avatarUrl || '',
       description: group.description || '',
-      is_public: false,
+      is_public: !!group.isPublic,
       verified: false,
-      created_at: new Date().toISOString(),
-      total_members: 0,
-      total_contributions: 0,
-      member_count: 0,
+      created_at: group.createdAt || new Date().toISOString(),
+      total_members: group.members?.length || group.memberCount || 0,
+      total_contributions: Number(group.totalCollected || 0),
+      member_count: group.members?.length || group.memberCount || 0,
       can_join: false,
-      can_manage: false,
-      founder: { id: 0, name: 'Unknown' },
+      is_member: true,
+      is_pending_registration: isPendingRegistration,
+      is_pending_equity: isPendingEquity,
+      has_paid_registration: hasPaidRegistration,
+      has_paid_equity: hasPaidEquity,
+      can_manage: group.myRole === 'admin',
+      isFounder: group.myRole === 'admin',
+      isCoFounder: false,
+      isExecutive: false,
+      founder: {
+        id: group.creator?.id || 0,
+        name: group.creator?.name || 'Founder',
+        avatar_url: null,
+      },
       co_founder: null,
       settings: {
         contribution_amount: Number(group.monthlyAmount),
+        registration_fee: Number(group.registrationFee || 0),
+        equity_amount: Number(group.equityAmount || 25000),
         frequency: 'monthly',
         payout_cycle: 'fixed',
-        late_fee: 0,
+        late_fee: Number(group.lateFeeAmount || 0),
+        loan_multiplier: Number(group.loanMultiplier || 1),
       },
+      active_members: (group.members || []).map((m: any) => ({
+        id: m.userId,
+        name: m.name,
+        avatar_url: null,
+        role: m.role,
+        joined_at: m.joinedAt,
+      })),
+      my_total_contributed: group.myTotalContributed !== undefined ? Number(group.myTotalContributed) : undefined,
+      my_max_loan_amount: group.myMaxLoanAmount !== undefined ? Number(group.myMaxLoanAmount) : undefined,
     };
+  } catch (err) {
+    console.error('Error fetching society:', err);
+    return null as any;
   }
-
-  return {
-    id: group.id,
-    name: group.name,
-    avatar_url: '',
-    description: group.description || '',
-    is_public: false,
-    verified: false,
-    created_at: group.createdAt,
-    total_members: group.members?.length || 0,
-    total_contributions: Number(group.totalCollected || 0),
-    member_count: group.members?.length || 0,
-    can_join: false,
-    can_manage: group.myRole === 'admin',
-    isFounder: group.myRole === 'admin',
-    isCoFounder: false,
-    isExecutive: false,
-    founder: {
-      id: group.creator?.id ?? 0,
-      name: group.creator?.name ?? 'Unknown',
-      avatar_url: null,
-    },
-    co_founder: null,
-    settings: {
-      contribution_amount: Number(group.monthlyAmount),
-      frequency: 'monthly',
-      payout_cycle: 'fixed',
-      late_fee: 0,
-    },
-    active_members: (group.members || []).map((m: any) => ({
-      id: m.userId,
-      name: m.name,
-      avatar_url: null,
-      role: m.role,
-      joined_at: m.joinedAt,
-    })),
-  };
 }
 
 export async function getSocietyMembers(id: string) {
@@ -234,18 +291,29 @@ export async function getSocietyMembers(id: string) {
 }
 
 export async function getSocietyLedger(id: string) {
-  const [society, res] = await Promise.all([
-    getSociety(id),
-    apiFetch(`/groups/${id}/ledger`, { method: 'GET', cache: 'no-store' }, true),
-  ]);
+  try {
+    const [society, res] = await Promise.all([
+      getSociety(id),
+      apiFetch(`/groups/${id}/ledger`, { method: 'GET', cache: 'no-store' }, true),
+    ]);
 
-  if (!res.ok) throw new Error('Failed to fetch ledger');
-  const data = await res.json();
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        society,
+        ledger: data.ledger || [],
+        summary: data.summary || { total_contributed: 0, total_payouts: 0, current_balance: 0 },
+      };
+    }
+  } catch (err) {
+    console.error('Error fetching ledger:', err);
+  }
 
+  const society = await getSociety(id);
   return {
     society,
-    ledger: data.ledger,
-    summary: data.summary,
+    ledger: [],
+    summary: { total_contributed: 0, total_payouts: 0, current_balance: 0 },
   };
 }
 
@@ -322,17 +390,41 @@ export async function getSocietyRotationQueue(id: string) {
 // contribution — only meaningful once the group admin sets a non-zero late
 // fee in settings; otherwise this is honestly an empty list, not mock data.
 export async function getMyPenalties(id: string) {
-  const res = await apiFetch(`/groups/${id}/penalties`, { method: 'GET', cache: 'no-store' }, true);
-  if (!res.ok) throw new Error('Failed to fetch penalties');
-  return res.json();
+  try {
+    const res = await apiFetch(`/groups/${id}/penalties`, { method: 'GET', cache: 'no-store' }, true);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.error('Error fetching penalties:', err);
+  }
+
+  return {
+    penalties: [],
+    summary: { active_total: 0, waived_total: 0, grand_total: 0 },
+    count: { total: 0, active: 0, waived: 0 },
+  };
 }
 
 // This backend has no per-day due date — "due" is the end of the current
 // calendar month once the group has been started by its admin.
 export async function getNextDueDate(id: string) {
-  const res = await apiFetch(`/groups/${id}/next-due`, { method: 'GET', cache: 'no-store' }, true);
-  if (!res.ok) throw new Error('Failed to fetch next due date');
-  return res.json();
+  try {
+    const res = await apiFetch(`/groups/${id}/next-due`, { method: 'GET', cache: 'no-store' }, true);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.error('Error fetching next due date:', err);
+  }
+
+  return {
+    next_due_date: new Date().toISOString(),
+    days_until_due: 30,
+    amount_expected: 0,
+    late_fee: 0,
+    has_contributed_this_period: false,
+  };
 }
 
 export async function createSociety(formData: FormData) {
@@ -477,6 +569,7 @@ export async function updateSocietySettings(
     frequency?: 'weekly' | 'monthly' | 'quarterly';
     payout_cycle?: 'rotating' | 'fixed';
     late_fee?: number;
+    loan_multiplier?: number;
   }
 ) {
   const res = await apiFetch(
@@ -487,6 +580,7 @@ export async function updateSocietySettings(
       body: JSON.stringify({
         monthlyAmount: data.contribution_amount,
         lateFeeAmount: data.late_fee,
+        loanMultiplier: data.loan_multiplier,
       }),
     },
     true
@@ -508,20 +602,24 @@ export async function updateSocietySettings(
 export async function getSocietyDocuments(
   societyId: string
 ): Promise<SocietyDocument[]> {
-  const res = await apiFetch(`/groups/${societyId}/documents`, { method: 'GET', cache: 'no-store' }, true);
-  if (!res.ok) {
-    throw new Error('Failed to load society documents');
+  try {
+    const res = await apiFetch(`/groups/${societyId}/documents`, { method: 'GET', cache: 'no-store' }, true);
+    if (res.ok) {
+      const documents = await res.json();
+      return documents.map((d: any) => ({
+        id: d.id,
+        type: d.type,
+        file_url: d.fileUrl,
+        description: d.description,
+        uploaded_by: String(d.uploadedByUserId),
+        uploaded_at: d.createdAt,
+        approved: d.approved,
+      }));
+    }
+  } catch (err) {
+    console.error('Error loading society documents:', err);
   }
-  const documents = await res.json();
-  return documents.map((d: any) => ({
-    id: d.id,
-    type: d.type,
-    file_url: d.fileUrl,
-    description: d.description,
-    uploaded_by: String(d.uploadedByUserId),
-    uploaded_at: d.createdAt,
-    approved: d.approved,
-  }));
+  return [];
 }
 
 // Upload a document (admin only). formData must contain "file", plus "type"

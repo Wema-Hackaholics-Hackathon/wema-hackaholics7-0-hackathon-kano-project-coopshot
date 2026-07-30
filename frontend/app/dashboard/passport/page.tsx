@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { getFinancialPassport } from '@/app/actions/passport';
 import { getMyActiveSocieties } from '@/app/actions/societies';
 import { FinancialPassportCard } from '@/components/financial-passport-card';

@@ -8,6 +8,11 @@ export interface SocietyProps {
   created_at: string;
   total_members: number;
   can_join?: boolean; // optional, based on user auth state
+  is_member?: boolean;
+  is_pending_registration?: boolean;
+  is_pending_equity?: boolean;
+  has_paid_registration?: boolean;
+  has_paid_equity?: boolean;
   can_manage?: boolean; // optional
   total_contributions: number;
   member_count: number;
@@ -30,12 +35,15 @@ export interface SocietyProps {
 
   settings: {
     contribution_amount: number;
+    registration_fee?: number;
+    equity_amount?: number;
     frequency: 'monthly' | 'quarterly' | 'yearly';
     payout_cycle: 'rotating' | 'fixed';
     late_fee: number;
     tbill_allocation_percentage?: number;
     tbill_duration_days?: number;
     rotation_queue?: [number];
+    loan_multiplier?: number;
   };
 
   active_members?: {
@@ -45,6 +53,9 @@ export interface SocietyProps {
     role?: 'admin' | 'member';
     joined_at?: string;
   }[];
+
+  my_total_contributed?: number;
+  my_max_loan_amount?: number;
 }
 
 export interface Member {
@@ -161,6 +172,7 @@ export interface FinancialPassport {
   completed_cycles: number;
   verified_cooperatives_count: number;
   milestones: PassportMilestone[];
+  active_societies?: any[];
 }
 
 export interface InvestmentCycleMilestone {

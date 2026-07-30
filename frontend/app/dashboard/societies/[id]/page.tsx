@@ -12,6 +12,7 @@ import {
   IconWorld,
   IconArrowUp,
   IconAt,
+  IconAlertCircle,
 } from '@tabler/icons-react';
 import { Textarea } from '@/components/ui/textarea';
 import { getSociety } from '../../../actions/societies';
@@ -21,6 +22,9 @@ import RightAside from '@/components/right-aside';
 import { notFound } from 'next/navigation';
 import SocietyHeader from '@/components/society-header';
 import { CommunityWealthWidget } from '@/components/community-wealth-widget';
+
+import { JoinSocietyButton } from '@/components/join-society-button';
+import { MakeContributionModal } from '@/components/make-contribution-modal';
 
 export default async function SocietyOverviewPage({
   params,
@@ -32,6 +36,95 @@ export default async function SocietyOverviewPage({
 
   if (!society) {
     notFound();
+  }
+
+  // Non-member Public Preview State with full financial & T-bill breakdown
+  if (!society.is_member) {
+    return (
+      <div className='min-h-screen bg-background flex flex-col'>
+        <SocietyHeader society={society} />
+        <div className='container max-w-7xl mx-auto px-6 py-8 flex-1'>
+          <div className='grid lg:grid-cols-12 gap-8'>
+            <div className='lg:col-span-7 xl:col-span-8 space-y-6'>
+              {/* Highlight Cards Grid for Outsiders */}
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <Card className='p-5 space-y-2 border shadow-2xs'>
+                  <div className='flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
+                    <IconCoin className='h-4 w-4 text-emerald-600' />
+                    <span>Monthly Contribution</span>
+                  </div>
+                  <div className='text-2xl font-bold text-foreground'>
+                    ₦{society.settings.contribution_amount.toLocaleString()}
+                  </div>
+                  <p className='text-xs text-muted-foreground capitalize'>
+                    Frequency: {society.settings.frequency} • Payout: {society.settings.payout_cycle}
+                  </p>
+                </Card>
+
+                <Card className='p-5 space-y-2 border shadow-2xs'>
+                  <div className='flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
+                    <IconUsers className='h-4 w-4 text-blue-600' />
+                    <span>Active Community</span>
+                  </div>
+                  <div className='text-2xl font-bold text-foreground'>
+                    {society.total_members} Members
+                  </div>
+                  <p className='text-xs text-muted-foreground'>
+                    Founded by {society.founder?.name || 'Admin'}
+                  </p>
+                </Card>
+              </div>
+
+              {/* T-Bill Investment Pooling Card */}
+              <Card className='p-6 space-y-4 border bg-linear-to-r from-primary/5 via-background to-background shadow-2xs'>
+                <div className='flex items-start gap-4'>
+                  <div className='p-3 rounded-2xl bg-primary/10 text-primary shrink-0'>
+                    <IconWorld className='h-6 w-6' />
+                  </div>
+                  <div className='space-y-1'>
+                    <h3 className='text-base font-bold text-foreground'>
+                      5% Treasury Bill Investment Pooling
+                    </h3>
+                    <p className='text-xs text-muted-foreground leading-relaxed'>
+                      This cooperative automatically pools 5% of all monthly member contributions into high-yield Central Bank of Nigeria FGN Treasury Bills (yielding 18.50% - 20.50% p.a.). Earnings mature quarterly and distribute back to members.
+                    </p>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Main Join CTA Banner */}
+              <div className='flex flex-col items-center justify-center text-center py-10 px-6 border rounded-2xl bg-card/60 shadow-2xs space-y-5'>
+                <Image
+                  src='/illustrations/undraw_join_niai.svg'
+                  alt='Join Society'
+                  width={220}
+                  height={160}
+                  className='h-36 w-auto opacity-90'
+                />
+                <div className='space-y-2 max-w-lg'>
+                  <h3 className='text-xl font-bold tracking-tight text-foreground'>
+                    {society.can_join ? `Ready to join ${society.name}?` : society.name}
+                  </h3>
+                  <p className='text-xs text-muted-foreground leading-relaxed max-w-md mx-auto'>
+                    {society.can_join
+                      ? 'Click below to review cooperative terms, contribution schedules, and confirm your membership.'
+                      : 'This cooperative has already launched its active savings cycle and is currently closed to new members.'}
+                  </p>
+                </div>
+                {society.can_join && (
+                  <div className='pt-1'>
+                    <JoinSocietyButton society={society} className='px-8 py-2.5 text-base font-semibold' />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right Sidebar */}
+            <RightAside society={society} />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const cycle = await getSocietyInvestmentCycle(id);
@@ -46,6 +139,33 @@ export default async function SocietyOverviewPage({
         <div className='grid lg:grid-cols-12 gap-8'>
           {/* Main Left Column - ~60% */}
           <div className='lg:col-span-7 xl:col-span-8 space-y-8'>
+            {society.is_pending_registration && (
+              <div className='p-5 rounded-2xl border border-amber-300 dark:border-amber-900 bg-amber-50/80 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs'>
+                <div className='flex items-start gap-3'>
+                  <div className='p-2 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-600 dark:text-amber-300 shrink-0 mt-0.5'>
+                    <IconAlertCircle className='h-5 w-5' />
+                  </div>
+                  <div className='space-y-1'>
+                    <h3 className='text-sm font-bold text-foreground'>
+                      Complete Registration Fee Payment
+                    </h3>
+                    <p className='text-xs text-muted-foreground leading-relaxed'>
+                      Your membership in <strong>{society.name}</strong> is currently pending. Please pay the one-time registration fee of <strong>₦{(society.settings.registration_fee || 0).toLocaleString()}</strong> to activate your full membership.
+                    </p>
+                  </div>
+                </div>
+                <MakeContributionModal
+                  society={society}
+                  mode='registration'
+                  trigger={
+                    <Button size='sm' className='font-semibold px-5 shrink-0 cursor-pointer shadow-2xs'>
+                      Pay Registration Fee (₦{(society.settings.registration_fee || 0).toLocaleString()})
+                    </Button>
+                  }
+                />
+              </div>
+            )}
+
             {/* Analytics Cards */}
             <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
               <Card>

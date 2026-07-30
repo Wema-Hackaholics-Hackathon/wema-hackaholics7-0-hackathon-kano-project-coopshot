@@ -112,7 +112,7 @@ This transforms cooperative societies from purely savings-based communities into
 
 ---
 
-## 🌍 The NEXUS Network
+## 🌍 The CoopShot Network
 
 CoopShot is designed to scale beyond individual cooperative societies.
 

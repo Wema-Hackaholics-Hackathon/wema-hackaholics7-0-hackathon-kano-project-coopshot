@@ -25,6 +25,12 @@ const Group = sequelize.define('Group', {
     allowNull: false,
     defaultValue: 0,
   },
+  // One-time share capital equity amount each new member must pay to become a bonafide member
+  equityAmount: {
+    type: DataTypes.DECIMAL(12, 2),
+    allowNull: false,
+    defaultValue: 25000.00,
+  },
   inviteCode: {
     type: DataTypes.STRING(10),
     allowNull: false,
@@ -65,6 +71,17 @@ const Group = sequelize.define('Group', {
     type: DataTypes.DECIMAL(12, 2),
     allowNull: false,
     defaultValue: 0,
+  },
+  // How many times a member's total contributions (equity + monthly) they may
+  // borrow against as a loan. Admin-configurable, hard-capped at x5.
+  loanMultiplier: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 1,
+    validate: {
+      min: 1,
+      max: 5,
+    },
   },
   avatarUrl: {
     type: DataTypes.STRING,

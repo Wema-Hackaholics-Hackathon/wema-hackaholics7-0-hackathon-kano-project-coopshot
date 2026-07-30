@@ -2,6 +2,7 @@ const { Op } = require('sequelize');
 const { Group, GroupMember, Contribution, User, sequelize } = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
 const generateInviteCode = require('../utils/inviteCode');
+const { computeLoanEligibility } = require('../utils/loanEligibility');
 
 function currentMonth() {
   return new Date().toISOString().slice(0, 7); // "YYYY-MM"
@@ -170,27 +171,72 @@ const getGroupById = asyncHandler(async (req, res) => {
     where: { groupId: group.id, userId: req.user.id, status: { [Op.ne]: 'removed' } },
   });
 
+  const activeMembers = await GroupMember.findAll({
+    where: { groupId: group.id, status: 'active' },
+    include: [{ model: User, as: 'user', attributes: ['id', 'name', 'email'] }],
+  });
+
+  const memberList = activeMembers.map((m) => ({
+    userId: m.user.id,
+    name: m.user.name,
+    email: m.user.email,
+    role: m.role,
+    joinedAt: m.createdAt,
+  }));
+
   if (!membership) {
+    if (group.isPublic) {
+      return res.json({
+        id: group.id,
+        name: group.name,
+        description: group.description,
+        avatarUrl: group.avatarUrl,
+        monthlyAmount: group.monthlyAmount,
+        registrationFee: group.registrationFee,
+        equityAmount: group.equityAmount,
+        loanMultiplier: group.loanMultiplier,
+        status: group.status,
+        isPublic: group.isPublic,
+        memberCount: activeMembers.length,
+        myRole: null,
+        membershipStatus: 'none',
+        creator: group.creator,
+        members: memberList,
+      });
+    }
     return res.status(403).json({ message: 'You are not a member of this group' });
   }
 
-  if (membership.status === 'pending') {
+  const paidContributions = await Contribution.findAll({
+    where: { groupId: group.id, userId: req.user.id, status: { [Op.ne]: 'failed' } },
+    attributes: ['type'],
+  });
+  const paidTypes = new Set(paidContributions.map((c) => c.type));
+
+  const hasPaidRegistration = Number(group.registrationFee) === 0 || paidTypes.has('registration');
+  const hasPaidEquity = Number(group.equityAmount) === 0 || paidTypes.has('equity');
+
+  if (membership.status === 'pending' || !hasPaidRegistration || !hasPaidEquity) {
     return res.json({
       id: group.id,
       name: group.name,
       description: group.description,
+      avatarUrl: group.avatarUrl,
       monthlyAmount: group.monthlyAmount,
       registrationFee: group.registrationFee,
+      equityAmount: group.equityAmount,
+      loanMultiplier: group.loanMultiplier,
       status: group.status,
+      isPublic: group.isPublic,
+      memberCount: activeMembers.length,
       myRole: membership.role,
-      membershipStatus: 'pending',
+      membershipStatus: (hasPaidRegistration && hasPaidEquity) ? 'active' : 'pending',
+      hasPaidRegistration,
+      hasPaidEquity,
+      creator: group.creator,
+      members: memberList,
     });
   }
-
-  const members = await GroupMember.findAll({
-    where: { groupId: group.id, status: 'active' },
-    include: [{ model: User, as: 'user', attributes: ['id', 'name', 'email'] }],
-  });
 
   const month = req.query.month || currentMonth();
 
@@ -199,25 +245,27 @@ const getGroupById = asyncHandler(async (req, res) => {
   });
   const paidUserIds = new Set(contributions.map((c) => c.userId));
 
-  const memberList = members.map((m) => ({
-    userId: m.user.id,
-    name: m.user.name,
-    email: m.user.email,
-    role: m.role,
-    hasPaidThisMonth: paidUserIds.has(m.user.id),
-    joinedAt: m.createdAt,
+  const memberListWithPaid = memberList.map((m) => ({
+    ...m,
+    hasPaidThisMonth: paidUserIds.has(m.userId),
   }));
 
   const totalCollected = contributions.reduce((sum, c) => sum + Number(c.amount), 0);
+
+  const { myTotalContributed, myMaxLoanAmount } = await computeLoanEligibility(group, req.user.id);
 
   res.json({
     ...group.toJSON(),
     myRole: membership.role,
     membershipStatus: 'active',
+    hasPaidRegistration,
+    hasPaidEquity,
     month,
-    members: memberList,
+    members: memberListWithPaid,
     totalCollected,
-    totalExpected: Number(group.monthlyAmount) * memberList.length,
+    totalExpected: Number(group.monthlyAmount) * memberListWithPaid.length,
+    myTotalContributed,
+    myMaxLoanAmount,
   });
 });
 
@@ -242,7 +290,7 @@ const updateGroupSettings = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Group not found' });
   }
 
-  const { monthlyAmount, registrationFee, isPublic, lateFeeAmount } = req.body;
+  const { monthlyAmount, registrationFee, isPublic, lateFeeAmount, loanMultiplier } = req.body;
 
   if (monthlyAmount !== undefined || registrationFee !== undefined) {
     if (group.status !== 'forming') {
@@ -268,6 +316,13 @@ const updateGroupSettings = asyncHandler(async (req, res) => {
       return res.status(400).json({ message: 'Late fee cannot be negative' });
     }
     group.lateFeeAmount = lateFeeAmount;
+  }
+  if (loanMultiplier !== undefined) {
+    const parsedMultiplier = Number(loanMultiplier);
+    if (!Number.isInteger(parsedMultiplier) || parsedMultiplier < 1 || parsedMultiplier > 5) {
+      return res.status(400).json({ message: 'Loan multiplier must be a whole number between x1 and x5' });
+    }
+    group.loanMultiplier = parsedMultiplier;
   }
 
   await group.save();

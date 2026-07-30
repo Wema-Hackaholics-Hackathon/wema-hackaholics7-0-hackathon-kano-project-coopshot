@@ -5,6 +5,8 @@ import { SocietyProps } from '@/types';
 import SocietyHeader from '@/components/society-header';
 import { CommunityWealthCard } from '@/components/community-wealth-card';
 
+import { GatedAccessScreen } from '@/components/gated-access-screen';
+
 export default async function SocietyWealthPage({
   params,
 }: {
@@ -15,6 +17,10 @@ export default async function SocietyWealthPage({
 
   if (!society) {
     notFound();
+  }
+
+  if (society.can_join) {
+    return <GatedAccessScreen society={society} featureName="Community Wealth & Investment Pooling" />;
   }
 
   const cycle = await getSocietyInvestmentCycle(id);

@@ -28,12 +28,22 @@ function serialize(group, counts) {
   };
 }
 
-// Public societies: browsable/searchable, joinable without an invite code
+// Public societies: browsable/searchable public societies the user hasn't already joined
 const getPublicGroups = asyncHandler(async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const search = (req.query.search || '').trim();
 
+  const myMemberships = await GroupMember.findAll({
+    where: { userId: req.user.id, status: { [Op.ne]: 'removed' } },
+    attributes: ['groupId'],
+  });
+  const excludeIds = myMemberships.map((m) => m.groupId);
+
   const where = { isPublic: true };
+  if (excludeIds.length > 0) {
+    where.id = { [Op.notIn]: excludeIds };
+  }
+
   if (search) {
     where[Op.or] = [
       { name: { [Op.like]: `%${search}%` } },
@@ -99,9 +109,6 @@ const joinPublicGroup = asyncHandler(async (req, res) => {
   if (!group.isPublic) {
     return res.status(403).json({ message: 'This group is not public — you need an invite code to join' });
   }
-  if (group.status !== 'forming') {
-    return res.status(403).json({ message: 'This cooperative has already started and is no longer accepting new members' });
-  }
 
   const initialStatus = Number(group.registrationFee) > 0 ? 'pending' : 'active';
 
@@ -109,9 +116,6 @@ const joinPublicGroup = asyncHandler(async (req, res) => {
   if (existing) {
     if (existing.status === 'active') {
       return res.status(409).json({ message: 'You are already a member of this group' });
-    }
-    if (existing.status === 'pending') {
-      return res.status(200).json({ ...group.toJSON(), membershipStatus: 'pending' });
     }
     existing.status = initialStatus;
     await existing.save();

@@ -9,7 +9,7 @@ interface SkeletonCardsProps {
 
 export function SkeletonCards({ count = 8 }: SkeletonCardsProps) {
   return (
-    <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+    <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
       {Array.from({ length: count }).map((_, i) => (
         <Card
           key={i}

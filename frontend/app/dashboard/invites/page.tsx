@@ -29,7 +29,7 @@ export default function InvitesPage() {
 
       <Suspense
         fallback={
-          <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
+          <div className='grid gap-6 md:grid-cols-2'>
             {[...Array(3)].map((_, i) => (
               <Card key={i} className='p-4 space-y-4'>
                 <div className='flex items-center gap-3'>

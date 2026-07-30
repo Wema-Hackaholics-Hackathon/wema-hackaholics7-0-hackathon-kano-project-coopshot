@@ -101,101 +101,117 @@ export function FinancialOpportunities({
         />
       </div>
 
-      {/* Opportunities Grid */}
-      <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-        {opportunities.map((opp, idx) => (
-          <motion.div
-            key={opp.id}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: idx * 0.08 }}
-            whileHover={{ y: -3 }}
-            className='flex flex-col'
-          >
-            <Card
-              className={`flex flex-col justify-between h-full transition-all hover:border-primary/50 shadow-xs ${
-                opp.status === 'locked' ? 'bg-muted/30 opacity-90' : 'bg-card'
-              }`}
+      {/* Opportunities Grid or Empty State */}
+      {opportunities.length === 0 ? (
+        <div className='flex flex-col items-center justify-center py-16 text-center bg-card rounded-xl border p-8 shadow-xs'>
+          <Image
+            src='/illustrations/undraw_the-void_i26b.svg'
+            alt='No opportunities available'
+            width={200}
+            height={140}
+            className='mb-6 h-36 w-auto'
+          />
+          <h3 className='text-xl font-bold mb-2 tracking-tight'>No Opportunities Unlocked Yet</h3>
+          <p className='text-muted-foreground max-w-md text-sm leading-relaxed'>
+            Participate in societies and build your financial passport consistency to unlock tailored credit, investment, and insurance opportunities.
+          </p>
+        </div>
+      ) : (
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+          {opportunities.map((opp, idx) => (
+            <motion.div
+              key={opp.id}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: idx * 0.08 }}
+              whileHover={{ y: -3 }}
+              className='flex flex-col'
             >
-            <CardHeader className='pb-3'>
-              <div className='flex items-start justify-between gap-3'>
-                <div className='p-2.5 rounded-lg bg-primary/10 shrink-0'>
-                  {getCategoryIcon(opp.category)}
-                </div>
-                <div className='flex items-center gap-2'>
-                  {opp.status === 'active' && (
-                    <Badge variant='default' className='text-xs font-medium'>
-                      ✓ Active
-                    </Badge>
-                  )}
-                  {opp.status === 'unlocked' && (
-                    <Badge variant='secondary' className='text-xs font-medium'>
-                      Unlocked
-                    </Badge>
-                  )}
-                  {opp.status === 'locked' && (
-                    <Badge variant='outline' className='text-xs font-medium gap-1 text-muted-foreground'>
-                      <IconLock className='h-3 w-3' />
-                      Locked
-                    </Badge>
-                  )}
-                </div>
-              </div>
-
-              <CardTitle className='text-lg font-bold text-foreground mt-3'>
-                {opp.title}
-              </CardTitle>
-              <CardDescription className='text-xs text-muted-foreground line-clamp-2 mt-1'>
-                {opp.description}
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent className='space-y-4 pt-0 flex-1 flex flex-col justify-end'>
-              <div className='space-y-2 pt-3 border-t text-xs'>
-                <div className='flex justify-between text-muted-foreground'>
-                  <span>Requirement:</span>
-                  <span className='font-semibold text-foreground'>
-                    {opp.required_level}
-                  </span>
-                </div>
-
-                {opp.interest_rate_or_yield && (
-                  <div className='flex justify-between text-muted-foreground'>
-                    <span>Yield / Interest:</span>
-                    <span className='font-semibold text-primary'>
-                      {opp.interest_rate_or_yield}
-                    </span>
+              <Card
+                className={`flex flex-col justify-between h-full transition-all hover:border-primary/50 shadow-xs ${
+                  opp.status === 'locked' ? 'bg-muted/30 opacity-90' : 'bg-card'
+                }`}
+              >
+                <CardHeader className='pb-3'>
+                  <div className='flex items-start justify-between gap-3'>
+                    <div className='p-2.5 rounded-lg bg-primary/10 shrink-0'>
+                      {getCategoryIcon(opp.category)}
+                    </div>
+                    <div className='flex items-center gap-2'>
+                      {opp.status === 'active' && (
+                        <Badge variant='default' className='text-xs font-medium'>
+                          ✓ Active
+                        </Badge>
+                      )}
+                      {opp.status === 'unlocked' && (
+                        <Badge variant='secondary' className='text-xs font-medium'>
+                          Unlocked
+                        </Badge>
+                      )}
+                      {opp.status === 'locked' && (
+                        <Badge variant='outline' className='text-xs font-medium gap-1 text-muted-foreground'>
+                          <IconLock className='h-3 w-3' />
+                          Locked
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                )}
 
-                {opp.max_limit && (
-                  <div className='flex justify-between text-muted-foreground'>
-                    <span>Capacity Limit:</span>
-                    <span className='font-semibold text-foreground'>
-                      {opp.max_limit}
-                    </span>
+                  <CardTitle className='text-lg font-bold text-foreground mt-3'>
+                    {opp.title}
+                  </CardTitle>
+                  <CardDescription className='text-xs text-muted-foreground line-clamp-2 mt-1'>
+                    {opp.description}
+                  </CardDescription>
+                </CardHeader>
+
+                <CardContent className='space-y-4 pt-0 flex-1 flex flex-col justify-end'>
+                  <div className='space-y-2 pt-3 border-t text-xs'>
+                    <div className='flex justify-between text-muted-foreground'>
+                      <span>Requirement:</span>
+                      <span className='font-semibold text-foreground'>
+                        {opp.required_level}
+                      </span>
+                    </div>
+
+                    {opp.interest_rate_or_yield && (
+                      <div className='flex justify-between text-muted-foreground'>
+                        <span>Yield / Interest:</span>
+                        <span className='font-semibold text-primary'>
+                          {opp.interest_rate_or_yield}
+                        </span>
+                      </div>
+                    )}
+
+                    {opp.max_limit && (
+                      <div className='flex justify-between text-muted-foreground'>
+                        <span>Capacity Limit:</span>
+                        <span className='font-semibold text-foreground'>
+                          {opp.max_limit}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-              <div className='pt-2 flex items-center justify-between gap-2'>
-                <span className='text-xs text-muted-foreground truncate max-w-50'>
-                  Partner: {opp.partner_name || 'CoopShot Network'}
-                </span>
-                <Button
-                  size='sm'
-                  variant={opp.status === 'locked' ? 'outline' : 'default'}
-                  onClick={() => setSelectedOpp(opp)}
-                  className='cursor-pointer text-xs font-medium shrink-0'
-                >
-                  View Details <IconArrowUpRight className='ml-1 h-3.5 w-3.5' />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      ))}
-    </div>
+                  <div className='pt-2 flex items-center justify-between gap-2'>
+                    <span className='text-xs text-muted-foreground truncate max-w-50'>
+                      Partner: {opp.partner_name || 'CoopShot Network'}
+                    </span>
+                    <Button
+                      size='sm'
+                      variant={opp.status === 'locked' ? 'outline' : 'default'}
+                      onClick={() => setSelectedOpp(opp)}
+                      className='cursor-pointer text-xs font-medium shrink-0'
+                    >
+                      View Details <IconArrowUpRight className='ml-1 h-3.5 w-3.5' />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
+      )}
 
       {/* Opportunity Detail Dialog */}
       {selectedOpp && (

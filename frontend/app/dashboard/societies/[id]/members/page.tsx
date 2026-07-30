@@ -10,11 +10,18 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+import { GatedAccessScreen } from '@/components/gated-access-screen';
+
 export default async function SocietyMembersPage({ params }: PageProps) {
   const { id } = await params;
   const data = await getSocietyMembers(id);
 
   const society: SocietyProps = data.society;
+  if (!society) return null;
+
+  if (society.can_join) {
+    return <GatedAccessScreen society={society} featureName="Member Roster" />;
+  }
   const members: Member[] = data.members;
   const totalMembers = society.total_members || members.length;
   const onlyFounder = totalMembers === 1;

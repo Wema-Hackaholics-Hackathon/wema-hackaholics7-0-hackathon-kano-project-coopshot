@@ -26,6 +26,8 @@ import {
   IconImageInPicture,
   IconLoader,
   IconTrendingUp,
+  IconSettings,
+  IconInfoCircle,
 } from '@tabler/icons-react';
 import { toggleSocietyVisibility, updateSocietyAvatar } from '@/app/actions/societies';
 import { SocietyDocument, SocietyProps } from '@/types';
@@ -67,7 +69,24 @@ export default function SocietySettingsClient({
     society.isFounder && !society.co_founder && society.can_manage;
 
   return (
-    <>
+    <div className='space-y-6'>
+      <Card className='p-6 border bg-linear-to-r from-primary/5 via-background to-background shadow-2xs'>
+        <div className='flex items-center gap-3'>
+          <div className='p-2.5 rounded-xl bg-primary/10 text-primary'>
+            {society.can_manage ? <IconSettings className='h-6 w-6' /> : <IconInfoCircle className='h-6 w-6' />}
+          </div>
+          <div>
+            <h2 className='text-lg font-bold text-foreground'>
+              {society.can_manage ? 'Cooperative Settings & Administration' : 'Cooperative Information & Governance'}
+            </h2>
+            <p className='text-xs text-muted-foreground'>
+              {society.can_manage
+                ? 'Manage group visibility, co-founder permissions, contribution rules, and legal documents.'
+                : 'Review cooperative parameters, constitution documents, governance policies, and verification status.'}
+            </p>
+          </div>
+        </div>
+      </Card>
       {/* Existing Sections */}
       {canInviteCoFounder && (
         <Card>
@@ -260,6 +279,12 @@ export default function SocietySettingsClient({
                 {society.settings.tbill_duration_days ?? 91} Days (3 Months)
               </p>
             </div>
+            <div>
+              <p className='text-sm text-muted-foreground'>Loan Multiplier</p>
+              <p className='text-lg font-semibold text-foreground'>
+                x{society.settings.loan_multiplier ?? 1} of contributions
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -359,6 +384,6 @@ export default function SocietySettingsClient({
         open={inviteOpen}
         onOpenChange={setInviteOpen}
       />
-    </>
+    </div>
   );
 }

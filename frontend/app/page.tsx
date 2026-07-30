@@ -1,5 +1,6 @@
-import { ComponentExample } from "@/components/component-example";
-
+// Redirects are handled by proxy.ts:
+// - No token  → /login
+// - Has token → /dashboard
 export default function Page() {
-    return <ComponentExample />;
-}
+  return null;
+}

@@ -42,10 +42,13 @@ const getGroupLedger = asyncHandler(async (req, res) => {
   const contributionEntries = contributions.map((c) => ({
     id: `contribution-${c.id}`,
     type: 'contribution',
+    category: c.type,
     amount: Number(c.amount),
     description: c.type === 'registration'
-      ? `Registration fee — ${c.user.name}`
-      : `Monthly contribution — ${c.user.name} (${c.month})`,
+      ? `Cooperative Income: Registration Fee — ${c.user.name}`
+      : c.type === 'equity'
+      ? `Member Share Capital Equity — ${c.user.name}`
+      : `Monthly Savings Contribution — ${c.user.name} (${c.month})`,
     createdAt: c.paidAt,
   }));
 
@@ -62,12 +65,24 @@ const getGroupLedger = asyncHandler(async (req, res) => {
   );
 
   const totalContributed = contributionEntries.reduce((sum, e) => sum + e.amount, 0);
+  const totalRegistrationIncome = contributions
+    .filter((c) => c.type === 'registration')
+    .reduce((sum, c) => sum + Number(c.amount), 0);
+  const totalEquityCapital = contributions
+    .filter((c) => c.type === 'equity')
+    .reduce((sum, c) => sum + Number(c.amount), 0);
+  const totalMonthlySavings = contributions
+    .filter((c) => c.type === 'monthly')
+    .reduce((sum, c) => sum + Number(c.amount), 0);
   const totalPayouts = payoutEntries.reduce((sum, e) => sum + e.amount, 0);
 
   res.json({
     ledger,
     summary: {
       total_contributed: totalContributed,
+      total_registration_income: totalRegistrationIncome,
+      total_equity_capital: totalEquityCapital,
+      total_monthly_savings: totalMonthlySavings,
       total_payouts: totalPayouts,
       current_balance: Number(group.treasuryPoolBalance),
     },

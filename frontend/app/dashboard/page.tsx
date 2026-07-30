@@ -1,4 +1,7 @@
 // app/dashboard/page.tsx
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { RecommendedSocietiesClient } from '@/components/recommended-societies-client';
 import { PublicSocietiesClient } from '@/components/public-societies-client';
 import { getFinancialPassport } from '@/app/actions/passport';

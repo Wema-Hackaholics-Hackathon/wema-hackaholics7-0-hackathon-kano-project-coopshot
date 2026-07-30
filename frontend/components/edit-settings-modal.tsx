@@ -50,17 +50,21 @@ function EditSettingsModal({
     society.settings.late_fee?.toString() || '0'
   );
   const [tbillPercent, setTbillPercent] = useState(
-    (society.settings.tbill_allocation_percentage ?? 5).toString()
+    Math.max(5, society.settings.tbill_allocation_percentage ?? 5).toString()
   );
   const [tbillDuration, setTbillDuration] = useState(
-    (society.settings.tbill_duration_days ?? 91).toString()
+    Math.max(91, society.settings.tbill_duration_days ?? 91).toString()
+  );
+  const [loanMultiplier, setLoanMultiplier] = useState(
+    (society.settings.loan_multiplier ?? 1).toString()
   );
 
   const handleSave = () => {
     const data: any = {};
 
-    if (parseFloat(amount) !== society.settings.contribution_amount) {
-      data.contribution_amount = parseFloat(amount);
+    const parsedAmount = parseFloat(amount);
+    if (!isNaN(parsedAmount) && parsedAmount !== society.settings.contribution_amount) {
+      data.contribution_amount = parsedAmount;
     }
     if (frequency !== society.settings.frequency) data.frequency = frequency;
     if (payoutCycle !== society.settings.payout_cycle)
@@ -68,11 +72,30 @@ function EditSettingsModal({
     if (parseFloat(lateFee) !== (society.settings.late_fee || 0)) {
       data.late_fee = parseFloat(lateFee);
     }
-    if (parseFloat(tbillPercent) !== (society.settings.tbill_allocation_percentage ?? 5)) {
-      data.tbill_allocation_percentage = parseFloat(tbillPercent);
+
+    const parsedPercent = parseFloat(tbillPercent);
+    if (isNaN(parsedPercent) || parsedPercent < 5) {
+      toast.error('Minimum Treasury Bill allocation is 5%');
+      setTbillPercent('5');
+      return;
     }
-    if (parseInt(tbillDuration) !== (society.settings.tbill_duration_days ?? 91)) {
-      data.tbill_duration_days = parseInt(tbillDuration);
+    if (parsedPercent !== (society.settings.tbill_allocation_percentage ?? 5)) {
+      data.tbill_allocation_percentage = parsedPercent;
+    }
+
+    const parsedDuration = parseInt(tbillDuration);
+    if (isNaN(parsedDuration) || parsedDuration < 91) {
+      toast.error('Minimum T-Bill lock duration is 3 months (91 days)');
+      setTbillDuration('91');
+      return;
+    }
+    if (parsedDuration !== (society.settings.tbill_duration_days ?? 91)) {
+      data.tbill_duration_days = parsedDuration;
+    }
+
+    const parsedMultiplier = parseInt(loanMultiplier);
+    if (parsedMultiplier !== (society.settings.loan_multiplier ?? 1)) {
+      data.loan_multiplier = parsedMultiplier;
     }
 
     if (Object.keys(data).length === 0) {
@@ -168,12 +191,38 @@ function EditSettingsModal({
             type='number'
             value={tbillPercent}
             onChange={(e) => setTbillPercent(e.target.value)}
-            min='0'
+            min='5'
             max='50'
             disabled={pending}
           />
           <p className='text-[11px] text-muted-foreground'>
-            Percentage of pool contributions automatically swept into CBN Treasury Bills.
+            Percentage of pool contributions automatically swept into CBN Treasury Bills (minimum 5%).
+          </p>
+        </div>
+
+        <div className='grid gap-1.5 sm:col-span-2 border-t pt-3 mt-1'>
+          <Label htmlFor='loan-multiplier' className='text-xs font-medium'>Loan Multiplier</Label>
+          <Select
+            value={loanMultiplier}
+            onValueChange={(value) => setLoanMultiplier(value)}
+            disabled={pending}
+          >
+            <SelectTrigger
+              id='loan-multiplier'
+              className='w-full'
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value='1'>x1 of contributions</SelectItem>
+              <SelectItem value='2'>x2 of contributions</SelectItem>
+              <SelectItem value='3'>x3 of contributions</SelectItem>
+              <SelectItem value='4'>x4 of contributions</SelectItem>
+              <SelectItem value='5'>x5 of contributions (maximum)</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className='text-[11px] text-muted-foreground'>
+            How many times a member&apos;s total contributions (equity + monthly savings) they may borrow as a loan. Capped at x5.
           </p>
         </div>
 
@@ -188,14 +237,13 @@ function EditSettingsModal({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value='30'>30 Days (1 Month)</SelectItem>
-              <SelectItem value='91'>91 Days (3 Months — Recommended)</SelectItem>
+              <SelectItem value='91'>91 Days (3 Months — Minimum & Recommended)</SelectItem>
               <SelectItem value='182'>182 Days (6 Months)</SelectItem>
               <SelectItem value='364'>364 Days (1 Year)</SelectItem>
             </SelectContent>
           </Select>
           <p className='text-[11px] text-muted-foreground'>
-            Maturity duration for collective Treasury Bill investments.
+            Maturity duration for collective Treasury Bill investments (minimum 3 months).
           </p>
         </div>
       </div>

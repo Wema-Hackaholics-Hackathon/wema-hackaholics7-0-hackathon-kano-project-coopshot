@@ -7,10 +7,8 @@ import {
   IconDashboard,
   IconHelp,
   IconInnerShadowTop,
-  IconMail,
   IconMailBolt,
   IconMoneybag,
-  IconSearch,
   IconSettings,
   IconIdBadge2,
   IconShoppingBag,
@@ -27,13 +25,12 @@ import {
   SidebarMenuItem,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
 } from '@/components/ui/sidebar';
 import { QuickCreateSociety } from './quick-create-society';
-import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { NavUserWrapper } from './nav-user-wrapper';
+import { ThemeToggle } from './theme-toggle';
 
 export interface NavGroupItem {
   title: string;
@@ -124,24 +121,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem className='flex items-center justify-between gap-2'>
             <SidebarMenuButton
               asChild
-              className='data-[slot=sidebar-menu-button]:p-1.5!'
+              className='data-[slot=sidebar-menu-button]:p-1.5! hover:bg-transparent! active:bg-transparent! hover:text-foreground!'
             >
               <Link href='/dashboard'>
-                <IconInnerShadowTop className='size-5!' />
+                <IconInnerShadowTop className='size-5! text-primary!' />
                 <span className='text-base font-semibold tracking-tight'>
                   CoopShot
                 </span>
               </Link>
             </SidebarMenuButton>
 
-            <Button
-              size='icon'
-              className='size-8 shrink-0'
-              variant='outline'
-            >
-              <IconMail className='h-4 w-4' />
-              <span className='sr-only'>Inbox</span>
-            </Button>
+            <ThemeToggle />
           </SidebarMenuItem>
 
           {/* Quick Create Action */}

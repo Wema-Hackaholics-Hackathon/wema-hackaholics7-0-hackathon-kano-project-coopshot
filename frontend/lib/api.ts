@@ -1,7 +1,17 @@
 // lib/api.ts
 
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_BASE_URL || process.env.BACKEND_BASE_URL;
+function getBackendUrl(): string {
+  const envUrl =
+    process.env.NEXT_PUBLIC_BACKEND_BASE_URL ||
+    process.env.BACKEND_BASE_URL ||
+    'http://localhost:5000/api';
+
+  let cleanUrl = envUrl.trim().replace(/\/+$/, '');
+  if (!cleanUrl.endsWith('/api')) {
+    cleanUrl += '/api';
+  }
+  return cleanUrl;
+}
 
 export async function apiFetch(
   endpoint: string,
@@ -17,8 +27,6 @@ export async function apiFetch(
     token = cookieStore.get('auth_token')?.value;
   } else {
     // In client components — read from document.cookie (not httpOnly!)
-    // Note: httpOnly cookies are NOT accessible here
-    // So we'll need a different strategy for client-side auth (see note below)
     token = document.cookie
       .split('; ')
       .find((row) => row.startsWith('auth_token='))
@@ -37,9 +45,13 @@ export async function apiFetch(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  return fetch(`${BACKEND_URL}${endpoint}`, {
+  const baseUrl = getBackendUrl();
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+  return fetch(`${baseUrl}${cleanEndpoint}`, {
     ...options,
     headers,
-    credentials: 'include', // important if you ever use non-httpOnly session cookies
+    credentials: 'include',
   });
 }
+

@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { Suspense } from 'react';
 import { getMyActiveSocieties } from '@/app/actions/societies';
 import { QuickCreateSociety } from '@/components/quick-create-society';
@@ -5,23 +6,28 @@ import { MySocietiesView } from '@/components/my-societies-view';
 import { SkeletonCards } from '@/components/skeleton-cards';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { IconUsers } from '@tabler/icons-react';
 
 async function SocietiesContent() {
   const { active_societies } = await getMyActiveSocieties();
 
   if (active_societies.length === 0) {
     return (
-      <div className='flex flex-col items-center justify-center py-20 text-center bg-card rounded-xl border p-8 shadow-xs'>
-        <div className='rounded-full bg-primary/10 p-6 mb-4 text-primary'>
-          <IconUsers className='h-12 w-12' />
-        </div>
+      <div className='flex flex-col items-center justify-center py-16 text-center bg-card rounded-xl border p-8 shadow-xs'>
+        <Image
+          src='/illustrations/undraw_collaboration_hkrb.svg'
+          alt='No active societies'
+          width={240}
+          height={180}
+          className='mb-6 h-40 w-auto'
+        />
         <h2 className='text-2xl font-bold mb-2 tracking-tight'>No societies yet</h2>
         <p className='text-muted-foreground mb-6 max-w-md text-sm leading-relaxed'>
           Join or create a society to start saving together with friends,
           family, or colleagues.
         </p>
-        <QuickCreateSociety from='sidebar' />
+        <div className='flex items-center justify-center w-full'>
+          <QuickCreateSociety from='page' />
+        </div>
       </div>
     );
   }
@@ -47,7 +53,7 @@ export default function SocietiesPage() {
 
       <Suspense
         fallback={
-          <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
+          <div className='grid gap-6 md:grid-cols-2'>
             {[...Array(6)].map((_, i) => (
               <Card key={i} className='p-4 space-y-4'>
                 <div className='flex items-center gap-3'>

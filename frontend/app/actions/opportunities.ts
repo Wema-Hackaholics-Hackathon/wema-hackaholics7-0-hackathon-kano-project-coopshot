@@ -13,6 +13,7 @@ import { FinancialOpportunity } from '@/types';
 export async function getFinancialOpportunities(): Promise<FinancialOpportunity[]> {
   let overallScore = 0;
   let hasInvestmentHistory = false;
+  let cooperativesJoined = 0;
 
   try {
     const res = await apiFetch('/passport', { method: 'GET', cache: 'no-store' }, true);
@@ -20,19 +21,25 @@ export async function getFinancialOpportunities(): Promise<FinancialOpportunity[
       const passport = await res.json();
       overallScore = passport.trustProfile?.overallScore ?? 0;
       hasInvestmentHistory = Number(passport.totalInvestmentAllocated) > 0;
+      cooperativesJoined = passport.cooperativesJoined ?? 0;
     }
   } catch {
     // fall through with defaults — an unreachable backend shouldn't break this page
   }
 
   return MOCK_FINANCIAL_OPPORTUNITIES.map((opp) => {
+    // Member must belong to at least 1 cooperative society to unlock opportunities
+    if (cooperativesJoined === 0) {
+      return { ...opp, status: 'locked' };
+    }
+
     if (opp.category === 'investment') {
       return { ...opp, status: hasInvestmentHistory ? 'active' : 'unlocked' };
     }
     if (opp.category === 'credit') {
       return { ...opp, status: overallScore >= 85 ? 'unlocked' : 'locked' };
     }
-    // insurance / sme / pension: not built at all in this backend, always locked
+    // insurance / sme / pension: locked by default
     return { ...opp, status: 'locked' };
   });
 }

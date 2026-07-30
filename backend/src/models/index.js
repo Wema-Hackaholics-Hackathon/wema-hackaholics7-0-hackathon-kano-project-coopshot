@@ -8,6 +8,7 @@ const TreasuryAllocation = require('./TreasuryAllocation');
 const TreasuryInvestment = require('./TreasuryInvestment');
 const GroupInvite = require('./GroupInvite');
 const GroupDocument = require('./GroupDocument');
+const Loan = require('./Loan');
 
 // A user creates many groups; a group belongs to one creator
 User.hasMany(Group, { foreignKey: 'createdBy', as: 'createdGroups' });
@@ -59,6 +60,16 @@ GroupDocument.belongsTo(Group, { foreignKey: 'groupId', as: 'group' });
 User.hasMany(GroupDocument, { foreignKey: 'uploadedByUserId', as: 'uploadedDocuments' });
 GroupDocument.belongsTo(User, { foreignKey: 'uploadedByUserId', as: 'uploadedBy' });
 
+// Loans: a member's request to borrow against their contributions
+Group.hasMany(Loan, { foreignKey: 'groupId', as: 'loans' });
+Loan.belongsTo(Group, { foreignKey: 'groupId', as: 'group' });
+
+User.hasMany(Loan, { foreignKey: 'userId', as: 'loanRequests' });
+Loan.belongsTo(User, { foreignKey: 'userId', as: 'requester' });
+
+User.hasMany(Loan, { foreignKey: 'decidedByUserId', as: 'decidedLoans' });
+Loan.belongsTo(User, { foreignKey: 'decidedByUserId', as: 'decider' });
+
 module.exports = {
   sequelize,
   User,
@@ -70,4 +81,5 @@ module.exports = {
   TreasuryInvestment,
   GroupInvite,
   GroupDocument,
+  Loan,
 };

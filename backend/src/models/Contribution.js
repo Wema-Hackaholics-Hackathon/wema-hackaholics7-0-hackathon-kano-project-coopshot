@@ -19,9 +19,9 @@ const Contribution = sequelize.define('Contribution', {
     type: DataTypes.DECIMAL(12, 2),
     allowNull: false,
   },
-  // "registration" = one-time joining fee, "monthly" = regular monthly contribution
+  // "registration" = one-time joining fee, "equity" = one-time share capital, "monthly" = regular monthly contribution
   type: {
-    type: DataTypes.ENUM('registration', 'monthly'),
+    type: DataTypes.STRING,
     allowNull: false,
     defaultValue: 'monthly',
   },

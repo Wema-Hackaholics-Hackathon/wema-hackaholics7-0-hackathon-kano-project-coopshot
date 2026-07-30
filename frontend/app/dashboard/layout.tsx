@@ -16,7 +16,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
         }
       >
         <AppSidebar variant='inset' />
-        <SidebarInset>
+        <SidebarInset className='min-w-0 overflow-x-hidden'>
           <SiteHeader />
             {children}
         </SidebarInset>

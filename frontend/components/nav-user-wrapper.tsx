@@ -27,7 +27,7 @@ export function NavUserWrapper() {
   if (loading) {
     return (
       <div className='flex items-center gap-3 p-3'>
-        <Skeleton className='h-8 w-8 rounded-lg' />
+        <Skeleton className='h-8 w-8 rounded-full' />
         <div className='grid gap-1'>
           <Skeleton className='h-4 w-32' />
           <Skeleton className='h-3 w-40' />

@@ -110,7 +110,9 @@ export function MySocietiesView({ societies }: MySocietiesViewProps) {
         <p className='text-muted-foreground mb-6 max-w-md text-sm leading-relaxed'>
           You haven&apos;t joined or created any cooperative savings groups yet. Get started by creating your own or exploring community groups!
         </p>
-        <QuickCreateSociety from='page' />
+        <div className='flex items-center justify-center w-full'>
+          <QuickCreateSociety from='page' />
+        </div>
       </div>
     );
   }

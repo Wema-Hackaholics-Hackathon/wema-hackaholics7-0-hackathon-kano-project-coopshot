@@ -405,8 +405,11 @@ export function QuickCreateSociety({ from }: { from: string }) {
   );
 
   const triggerButtonPage = (
-    <Button onClick={() => setOpen(true)}>
-      <IconPlus className='mr-2 h-4 w-4' /> Create Society
+    <Button
+      onClick={() => setOpen(true)}
+      className='cursor-pointer font-semibold shadow-2xs px-5'
+    >
+      <IconPlus className='mr-1.5 h-4 w-4' /> Create Society
     </Button>
   );
 

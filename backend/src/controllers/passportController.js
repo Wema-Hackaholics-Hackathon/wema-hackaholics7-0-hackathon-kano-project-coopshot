@@ -16,7 +16,7 @@ function scoreLabel(score) {
 // A portable record of a member's verified financial participation, built entirely
 // from their real contribution history — not a generic credit score.
 const getMyPassport = asyncHandler(async (req, res) => {
-  const userId = req.user.id;
+  const userId = Number(req.user.id);
 
   const memberships = await GroupMember.findAll({
     where: { userId },
@@ -31,12 +31,17 @@ const getMyPassport = asyncHandler(async (req, res) => {
     include: [{ model: TreasuryAllocation, as: 'treasuryAllocation' }],
   });
 
-  const successfulMonthly = contributions.filter((c) => c.type === 'monthly' && c.status === 'success');
-  const successfulRegistration = contributions.filter((c) => c.type === 'registration' && c.status === 'success');
-  const failedAny = contributions.filter((c) => c.status === 'failed');
+  const successfulMonthly = contributions.filter((c) => c.type === 'monthly' && c.status !== 'failed');
+  const successfulEquity = contributions.filter((c) => c.type === 'equity' && c.status !== 'failed');
+  const successfulRegistration = contributions.filter((c) => c.type === 'registration' && c.status !== 'failed');
 
-  const totalContributed = successfulMonthly.reduce((sum, c) => sum + Number(c.amount), 0);
+  const totalMonthlyContributed = successfulMonthly.reduce((sum, c) => sum + Number(c.amount), 0);
+  const totalEquityContributed = successfulEquity.reduce((sum, c) => sum + Number(c.amount), 0);
   const totalRegistrationFeesPaid = successfulRegistration.reduce((sum, c) => sum + Number(c.amount), 0);
+
+  // User's total financial assets = Member Equity Share Capital + Monthly Savings Contributions
+  const totalContributed = totalMonthlyContributed + totalEquityContributed;
+
   const totalInvestmentAllocated = successfulMonthly.reduce(
     (sum, c) => sum + (c.treasuryAllocation ? Number(c.treasuryAllocation.amount) : 0),
     0
@@ -63,6 +68,9 @@ const getMyPassport = asyncHandler(async (req, res) => {
 
   // Payment reliability: of every payment ever attempted (registration or monthly),
   // what fraction actually succeeded?
+  const failedAny = contributions.filter(
+    (c) => c.status === 'failed' && (c.type === 'monthly' || c.type === 'registration')
+  );
   const successfulCount = successfulMonthly.length + successfulRegistration.length;
   const attemptedCount = successfulCount + failedAny.length;
   const paymentReliability = attemptedCount > 0 ? (successfulCount / attemptedCount) * 100 : 0;
@@ -147,6 +155,7 @@ const getMyPassport = asyncHandler(async (req, res) => {
     memberSince,
     cooperativesJoined,
     totalContributed,
+    totalEquityContributed,
     totalRegistrationFeesPaid,
     totalInvestmentAllocated,
     totalInvestmentReturns,

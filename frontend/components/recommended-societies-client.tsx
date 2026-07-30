@@ -1,6 +1,7 @@
 // components/recommended-societies-client.tsx
 'use client';
 
+import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useTransition } from 'react';
 import { getRecommendedSocieties } from '@/app/actions/societies';
@@ -49,13 +50,30 @@ export function RecommendedSocietiesClient() {
         {isLoading ? (
           <SkeletonCards count={4} />
         ) : error ? (
-          <div className='text-center py-10 text-muted-foreground'>
-            <p>{error}</p>
-            <p className='text-sm mt-2'>Try refreshing the page.</p>
+          <div className='flex flex-col items-center justify-center py-12 text-center bg-card/60 rounded-xl border p-8 shadow-2xs'>
+            <Image
+              src='/illustrations/undraw_refresh_szfn.svg'
+              alt='Connection error'
+              width={180}
+              height={130}
+              className='mb-4 h-28 w-auto opacity-85'
+            />
+            <p className='text-base font-semibold text-foreground mb-1'>{error}</p>
+            <p className='text-xs text-muted-foreground'>Please ensure backend service is active and refresh.</p>
           </div>
         ) : result?.data.length === 0 ? (
-          <div className='text-center py-10 text-muted-foreground'>
-            <p>No recommended societies available right now.</p>
+          <div className='flex flex-col items-center justify-center py-12 text-center bg-card/60 rounded-xl border p-8 shadow-2xs'>
+            <Image
+              src='/illustrations/undraw_join_niai.svg'
+              alt='No recommended societies'
+              width={200}
+              height={140}
+              className='mb-4 h-32 w-auto opacity-90'
+            />
+            <h3 className='text-lg font-bold text-foreground mb-1'>No Recommended Societies</h3>
+            <p className='text-muted-foreground text-sm max-w-sm leading-relaxed'>
+              We couldn&apos;t find personalized recommendations right now. Explore public societies below or create your own!
+            </p>
           </div>
         ) : (
           <SocietyCards societies={result.data} />

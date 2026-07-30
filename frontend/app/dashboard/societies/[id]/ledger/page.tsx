@@ -35,6 +35,8 @@ import {
 } from '@/types';
 import { MakeContributionModal } from '@/components/make-contribution-modal';
 
+import { GatedAccessScreen } from '@/components/gated-access-screen';
+
 export default async function SocietyLedgerPage({
   params,
 }: {
@@ -49,7 +51,11 @@ export default async function SocietyLedgerPage({
     getNextDueDate(id),
   ]);
 
-  const { society, ledger, summary }: LedgerPageData = ledgerData;
+  const { society, ledger, summary }: LedgerPageData = ledgerData || {};
+
+  if (!society || society.can_join) {
+    return <GatedAccessScreen society={society} featureName="Ledger Records & Financial Summary" />;
+  }
   const { summary: penaltySummary, penalties }: PenaltiesResponse =
     penaltiesData;
   const { next_due_date, days_until_due }: NextDueDateResponse = dueDateData;
@@ -224,14 +230,26 @@ export default async function SocietyLedgerPage({
                   </p>
                 </div>
                 <div className='w-auto'>
-                  <MakeContributionModal
-                    society={society}
-                    trigger={
-                      <Button size='sm' className='cursor-pointer font-medium'>
-                        Make Contribution
-                      </Button>
-                    }
-                  />
+                  {society.is_pending_registration ? (
+                    <MakeContributionModal
+                      society={society}
+                      mode='registration'
+                      trigger={
+                        <Button size='sm' className='cursor-pointer font-medium'>
+                          Pay Registration Fee (₦{(society.settings.registration_fee || 0).toLocaleString()})
+                        </Button>
+                      }
+                    />
+                  ) : (
+                    <MakeContributionModal
+                      society={society}
+                      trigger={
+                        <Button size='sm' className='cursor-pointer font-medium'>
+                          Make Contribution
+                        </Button>
+                      }
+                    />
+                  )}
                 </div>
               </CardHeader>
               <CardContent>

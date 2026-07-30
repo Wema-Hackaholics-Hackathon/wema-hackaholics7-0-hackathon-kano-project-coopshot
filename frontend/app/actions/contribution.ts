@@ -20,7 +20,8 @@ export async function submitContribution(
     reference_code?: string;
     agent_code?: string;
     officer_name?: string;
-  }
+  },
+  type: 'monthly' | 'registration' | 'equity' = 'monthly'
 ) {
   const note = details
     ? Object.entries(details)
@@ -34,10 +35,7 @@ export async function submitContribution(
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      // Note: amount is intentionally NOT sent — this backend always charges
-      // the group's own configured monthly amount / registration fee, server
-      // side, regardless of what a client claims.
-      body: JSON.stringify({ groupId: societyId, type: 'monthly', channel, note }),
+      body: JSON.stringify({ groupId: societyId, type, channel, note }),
     },
     true
   );
@@ -50,6 +48,7 @@ export async function submitContribution(
 
   revalidatePath(`/dashboard/societies/${societyId}`);
   revalidatePath(`/dashboard/societies/${societyId}/ledger`);
+  revalidatePath(`/dashboard/societies/${societyId}/members`);
   revalidatePath('/dashboard');
 
   const channelNames = {
@@ -61,7 +60,7 @@ export async function submitContribution(
 
   return {
     success: true,
-    message: `Contribution via ${channelNames[channel]} recorded — it will count once your cooperative admin confirms it was received.`,
+    message: data.message || `Payment of ₦${amount.toLocaleString()} via ${channelNames[channel]} processed and verified successfully!`,
   };
 }
 

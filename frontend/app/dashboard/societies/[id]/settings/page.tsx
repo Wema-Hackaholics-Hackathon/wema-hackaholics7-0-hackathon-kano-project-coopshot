@@ -4,11 +4,13 @@ import SocietyHeader from '@/components/society-header';
 import RightAside from '@/components/right-aside';
 import SocietySettingsClient from '@/components/society-settings-client';
 import { getSocietySettings } from '@/app/actions/societies';
-import { getSocietyDocuments } from '@/app/actions/societies'; 
+import { getSocietyDocuments } from '@/app/actions/societies';
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
+
+import { GatedAccessScreen } from '@/components/gated-access-screen';
 
 export default async function SocietySettingsPage({ params }: PageProps) {
   const { id } = await params;
@@ -19,7 +21,10 @@ export default async function SocietySettingsPage({ params }: PageProps) {
     getSocietyDocuments(id),
   ]);
 
-  const society = settingsData.society;
+  const society = settingsData?.society;
+  if (!society || society.can_join) {
+    return <GatedAccessScreen society={society} featureName="Society Policy & Settings" />;
+  }
 
   return (
     <div className='min-h-screen bg-background flex flex-col'>

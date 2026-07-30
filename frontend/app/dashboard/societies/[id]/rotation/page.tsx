@@ -27,6 +27,8 @@ interface PageData {
   rotation: RotationData;
 }
 
+import { GatedAccessScreen } from '@/components/gated-access-screen';
+
 export default async function SocietyRotationPage({
   params,
 }: {
@@ -34,6 +36,10 @@ export default async function SocietyRotationPage({
 }) {
   const { id } = await params;
   const { society, rotation }: PageData = await getSocietyRotationQueue(id);
+
+  if (!society || society.can_join) {
+    return <GatedAccessScreen society={society} featureName="Rotation Queue Order" />;
+  }
 
   const { queue, my_position, next_up, cycle } = rotation;
 

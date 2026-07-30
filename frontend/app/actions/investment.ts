@@ -54,40 +54,47 @@ function formatDate(d: string) {
 export async function getSocietyInvestmentCycle(
   societyId: string
 ): Promise<InvestmentCycle> {
-  const res = await apiFetch(`/groups/${societyId}/treasury`, { method: 'GET', cache: 'no-store' }, true);
-  if (!res.ok) throw new Error('Failed to fetch investment cycle');
-  const data = await res.json();
+  try {
+    const res = await apiFetch(`/groups/${societyId}/treasury`, { method: 'GET', cache: 'no-store' }, true);
+    if (res.ok) {
+      const data = await res.json();
 
-  const latest = data.investments?.[0];
-  if (!latest) {
-    return emptyCycle(societyId, '', Number(data.poolBalance));
+      const latest = data.investments?.[0];
+      if (!latest) {
+        return emptyCycle(societyId, '', Number(data.poolBalance || 0));
+      }
+
+      const isMatured = latest.status === 'matured';
+      const status: InvestmentCycle['status'] = isMatured ? 'distributed' : 'active';
+
+      return {
+        id: `${societyId}-${latest.id}`,
+        society_id: societyId,
+        society_name: '',
+        total_pool_assets: Number(data.poolBalance || 0) + Number(latest.principal || 0),
+        allocation_percentage: 5,
+        principal_amount: Number(latest.principal || 0),
+        instrument_name: latest.treasuryBill?.name || 'Treasury Bill',
+        tenor_days: latest.tenorDays || 91,
+        annual_yield_rate: Number(latest.interestRate || 0),
+        expected_returns: isMatured ? Number(latest.returnAmount || 0) : Number(latest.currentValue || 0) - Number(latest.principal || 0),
+        status,
+        started_at: latest.purchasedAt || '',
+        maturity_date: latest.maturityDate || '',
+        milestones: [
+          { stage: 1, ...STAGE_TITLES[0], date: formatDate(latest.purchasedAt), completed: true },
+          { stage: 2, ...STAGE_TITLES[1], date: formatDate(latest.purchasedAt), completed: true },
+          { stage: 3, ...STAGE_TITLES[2], date: formatDate(latest.purchasedAt), completed: true },
+          { stage: 4, ...STAGE_TITLES[3], date: formatDate(latest.maturityDate), completed: isMatured },
+          { stage: 5, ...STAGE_TITLES[4], date: latest.distributedAt ? formatDate(latest.distributedAt) : '', completed: isMatured },
+        ],
+      };
+    }
+  } catch (err) {
+    console.error('Error fetching investment cycle:', err);
   }
 
-  const isMatured = latest.status === 'matured';
-  const status: InvestmentCycle['status'] = isMatured ? 'distributed' : 'active';
-
-  return {
-    id: `${societyId}-${latest.id}`,
-    society_id: societyId,
-    society_name: '',
-    total_pool_assets: Number(data.poolBalance) + Number(latest.principal),
-    allocation_percentage: 5,
-    principal_amount: Number(latest.principal),
-    instrument_name: latest.treasuryBill?.name || 'Treasury Bill',
-    tenor_days: latest.tenorDays,
-    annual_yield_rate: Number(latest.interestRate),
-    expected_returns: isMatured ? Number(latest.returnAmount) : Number(latest.currentValue) - Number(latest.principal),
-    status,
-    started_at: latest.purchasedAt,
-    maturity_date: latest.maturityDate,
-    milestones: [
-      { stage: 1, ...STAGE_TITLES[0], date: formatDate(latest.purchasedAt), completed: true },
-      { stage: 2, ...STAGE_TITLES[1], date: formatDate(latest.purchasedAt), completed: true },
-      { stage: 3, ...STAGE_TITLES[2], date: formatDate(latest.purchasedAt), completed: true },
-      { stage: 4, ...STAGE_TITLES[3], date: formatDate(latest.maturityDate), completed: isMatured },
-      { stage: 5, ...STAGE_TITLES[4], date: latest.distributedAt ? formatDate(latest.distributedAt) : '', completed: isMatured },
-    ],
-  };
+  return emptyCycle(societyId, '', 0);
 }
 
 async function ensureTreasuryBillConnected(societyId: string) {

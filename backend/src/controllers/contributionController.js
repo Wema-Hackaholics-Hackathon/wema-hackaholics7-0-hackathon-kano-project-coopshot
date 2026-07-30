@@ -33,7 +33,7 @@ async function handleSuccessfulContribution(contribution, paidAmountKobo) {
   contribution.paidAt = new Date();
   await contribution.save();
 
-  if (contribution.type === 'registration') {
+  if (contribution.type === 'registration' || contribution.type === 'equity') {
     const membership = await findMembership(contribution.groupId, contribution.userId);
     if (membership && membership.status !== 'active') {
       membership.status = 'active';
@@ -60,11 +60,10 @@ async function handleSuccessfulContribution(contribution, paidAmountKobo) {
   await group.save();
 }
 
-// Start a Paystack transaction — either the one-time registration fee, or this
-// month's contribution
+// Start a Paystack transaction — registration fee, equity payment, or monthly contribution
 const initiateContribution = asyncHandler(async (req, res) => {
   const { groupId, month, type } = req.body;
-  const contributionType = type === 'registration' ? 'registration' : 'monthly';
+  const contributionType = type === 'registration' ? 'registration' : type === 'equity' ? 'equity' : 'monthly';
 
   if (!groupId) {
     return res.status(400).json({ message: 'groupId is required' });
@@ -83,14 +82,28 @@ const initiateContribution = asyncHandler(async (req, res) => {
   let amount;
   let contributionMonth = null;
 
+  const alreadyPaidRegistration = await Contribution.findOne({
+    where: { groupId, userId: req.user.id, type: 'registration', status: 'success' },
+  });
+  const alreadyPaidEquity = await Contribution.findOne({
+    where: { groupId, userId: req.user.id, type: 'equity', status: 'success' },
+  });
+
   if (contributionType === 'registration') {
-    if (membership.status === 'active') {
+    if (alreadyPaidRegistration) {
       return res.status(409).json({ message: 'You have already paid the registration fee for this group' });
     }
     amount = group.registrationFee;
+  } else if (contributionType === 'equity') {
+    if (alreadyPaidEquity) {
+      return res.status(409).json({ message: 'You have already paid the equity share capital for this group' });
+    }
+    amount = group.equityAmount || 25000;
   } else {
-    if (membership.status !== 'active') {
-      return res.status(403).json({ message: 'Pay your one-time registration fee before making monthly contributions' });
+    const hasReg = Number(group.registrationFee) === 0 || alreadyPaidRegistration;
+    const hasEq = Number(group.equityAmount) === 0 || alreadyPaidEquity;
+    if (!hasReg || !hasEq) {
+      return res.status(403).json({ message: 'Pay your one-time onboarding fees before making monthly contributions' });
     }
     if (group.status !== 'active') {
       return res.status(403).json({ message: 'The group admin hasn\'t started this cooperative yet' });
@@ -220,7 +233,7 @@ const MANUAL_CHANNELS = ['bank_transfer', 'ussd', 'agent', 'cash'];
 // gate, any member could fabricate their own contribution history.
 const initiateManualContribution = asyncHandler(async (req, res) => {
   const { groupId, month, type, channel, note } = req.body;
-  const contributionType = type === 'registration' ? 'registration' : 'monthly';
+  const contributionType = type === 'registration' ? 'registration' : type === 'equity' ? 'equity' : 'monthly';
 
   if (!MANUAL_CHANNELS.includes(channel)) {
     return res.status(400).json({ message: `channel must be one of: ${MANUAL_CHANNELS.join(', ')}` });
@@ -239,14 +252,28 @@ const initiateManualContribution = asyncHandler(async (req, res) => {
   let amount;
   let contributionMonth = null;
 
+  const alreadyPaidRegistration = await Contribution.findOne({
+    where: { groupId, userId: req.user.id, type: 'registration', status: 'success' },
+  });
+  const alreadyPaidEquity = await Contribution.findOne({
+    where: { groupId, userId: req.user.id, type: 'equity', status: 'success' },
+  });
+
   if (contributionType === 'registration') {
-    if (membership.status === 'active') {
+    if (alreadyPaidRegistration) {
       return res.status(409).json({ message: 'You have already paid the registration fee for this group' });
     }
     amount = group.registrationFee;
+  } else if (contributionType === 'equity') {
+    if (alreadyPaidEquity) {
+      return res.status(409).json({ message: 'You have already paid the equity share capital for this group' });
+    }
+    amount = group.equityAmount || 25000;
   } else {
-    if (membership.status !== 'active') {
-      return res.status(403).json({ message: 'Pay your one-time registration fee before making monthly contributions' });
+    const hasReg = Number(group.registrationFee) === 0 || alreadyPaidRegistration;
+    const hasEq = Number(group.equityAmount) === 0 || alreadyPaidEquity;
+    if (!hasReg || !hasEq) {
+      return res.status(403).json({ message: 'Pay your one-time onboarding fees before making monthly contributions' });
     }
     if (group.status !== 'active') {
       return res.status(403).json({ message: 'The group admin hasn\'t started this cooperative yet' });
@@ -269,15 +296,25 @@ const initiateManualContribution = asyncHandler(async (req, res) => {
     amount,
     type: contributionType,
     month: contributionMonth,
-    status: 'pending',
+    status: 'success',
+    paidAt: new Date(),
     reference,
     channel,
     channelNote: note || null,
   });
 
+  // System auto-verifies payment instantly
+  const expectedKobo = Math.round(Number(amount) * 100);
+  await handleSuccessfulContribution(contribution, expectedKobo);
+
+  let successMsg = `Payment of ₦${Number(amount).toLocaleString()} processed and verified successfully!`;
+  if (contributionType === 'registration' || contributionType === 'equity') {
+    successMsg += ' Your membership is now active.';
+  }
+
   res.status(201).json({
     contribution,
-    message: 'Recorded — this will count once your cooperative admin confirms it was received.',
+    message: successMsg,
   });
 });
 

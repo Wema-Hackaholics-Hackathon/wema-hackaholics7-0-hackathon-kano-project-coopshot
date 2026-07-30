@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { SocietyProps } from '@/types';
 import {
@@ -30,6 +30,7 @@ import {
 } from '@tabler/icons-react';
 import { toast } from 'sonner';
 import { submitContribution } from '@/app/actions/contribution';
+import { getMyActiveSocieties } from '@/app/actions/societies';
 
 export interface CooperativeOption {
   id: string | number;
@@ -42,27 +43,11 @@ export interface CooperativeOption {
 
 const DEFAULT_COOPERATIVES: CooperativeOption[] = [
   {
-    id: '1',
-    name: 'Victoria Island Savers Guild',
-    settings: {
-      contribution_amount: 300000,
-      frequency: 'monthly',
-    },
-  },
-  {
-    id: '2',
-    name: 'Tech Founders Investment Circle',
-    settings: {
-      contribution_amount: 500000,
-      frequency: 'quarterly',
-    },
-  },
-  {
     id: 'treasury',
-    name: 'CoopShot Platform Treasury',
+    name: 'CoopShot Platform Treasury Pool',
     settings: {
-      contribution_amount: 100000,
-      frequency: 'flexible',
+      contribution_amount: 50000,
+      frequency: 'monthly',
     },
   },
 ];
@@ -72,6 +57,7 @@ interface MakeContributionModalProps {
   societyName?: string;
   cooperatives?: CooperativeOption[];
   trigger?: React.ReactNode;
+  mode?: 'monthly' | 'registration' | 'equity';
 }
 
 const USSD_BANKS = [
@@ -89,6 +75,7 @@ export function MakeContributionModal({
   societyName,
   cooperatives,
   trigger,
+  mode = 'monthly',
 }: MakeContributionModalProps) {
   const singleSocietyCoop = society?.name
     ? {
@@ -102,13 +89,11 @@ export function MakeContributionModal({
   // DEFAULT_COOPERATIVES only apply when this modal is used with no real
   // data at all (shouldn't happen once every caller passes real data, but
   // kept as a last-resort so the dialog never renders empty).
-  const availableCoops = singleSocietyCoop
+  const initialCoops = singleSocietyCoop
     ? [singleSocietyCoop]
     : cooperatives && cooperatives.length > 0
       ? cooperatives
       : DEFAULT_COOPERATIVES;
-
-  const initialCoop = singleSocietyCoop || availableCoops[0];
 
   // Real admins of this society (founder + any co-founder) — this backend has
   // no separate Treasurer/Secretary title, just admin/member roles.
@@ -120,7 +105,8 @@ export function MakeContributionModal({
   }
 
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedCoop, setSelectedCoop] = useState<CooperativeOption>(initialCoop);
+  const [availableCoops, setAvailableCoops] = useState<CooperativeOption[]>(initialCoops);
+  const [selectedCoop, setSelectedCoop] = useState<CooperativeOption>(initialCoops[0]);
   const [selectedChannel, setSelectedChannel] = useState<
     'bank_transfer' | 'ussd' | 'agent' | 'cash'
   >('bank_transfer');
@@ -130,8 +116,48 @@ export function MakeContributionModal({
   const [isCopied, setIsCopied] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Only self-fetches when the caller supplies neither a specific society nor
+  // an explicit cooperatives list — every current caller passes one of those,
+  // this is a last-resort so the dialog is never stuck on fake data.
+  useEffect(() => {
+    if (isOpen && !society && !cooperatives) {
+      let isMounted = true;
+      getMyActiveSocieties()
+        .then(({ active_societies }) => {
+          if (!isMounted) return;
+          if (active_societies && active_societies.length > 0) {
+            const realCoops: CooperativeOption[] = active_societies.map((s: any) => ({
+              id: String(s.id),
+              name: s.name,
+              settings: {
+                contribution_amount: s.settings?.contribution_amount || 10000,
+                frequency: s.settings?.frequency || 'monthly',
+              },
+            }));
+            setAvailableCoops(realCoops);
+            setSelectedCoop(realCoops[0]);
+          } else {
+            setAvailableCoops(DEFAULT_COOPERATIVES);
+            setSelectedCoop(DEFAULT_COOPERATIVES[0]);
+          }
+        })
+        .catch((err) => {
+          console.error('Error fetching active societies for modal:', err);
+        });
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [isOpen, society, cooperatives]);
+
+  const isRegistration = mode === 'registration';
+  const isEquity = mode === 'equity';
   const targetSocietyName = selectedCoop.name;
-  const amount = selectedCoop.settings?.contribution_amount ?? 0;
+  const amount = isRegistration
+    ? (society?.settings?.registration_fee || (selectedCoop.settings as any)?.registration_fee || 5000)
+    : isEquity
+    ? (society?.settings?.equity_amount || (selectedCoop.settings as any)?.equity_amount || 25000)
+    : (selectedCoop.settings?.contribution_amount ?? 0);
   const frequency = selectedCoop.settings?.frequency || 'monthly';
   const accountNumber = '0123984710';
   const generatedUssdCode = `${selectedUssdBank.code}000*${accountNumber}*${amount}#`;
@@ -152,21 +178,28 @@ export function MakeContributionModal({
   ) => {
     setLoading(true);
     try {
-      const res = await submitContribution(String(society?.id || 1), channel, amount, {
-        bank_name: channel === 'bank_transfer' ? 'Sterling Bank' : undefined,
-        reference_code: channel === 'ussd' ? generatedUssdCode : undefined,
-        agent_code: channel === 'agent' ? 'AGENT-LAGOS-092' : undefined,
-        officer_name: channel === 'cash' ? selectedOfficer : undefined,
-      });
+      const targetGroupId = String(selectedCoop.id || society?.id || '1');
+      const res = await submitContribution(
+        targetGroupId,
+        channel,
+        amount,
+        {
+          bank_name: channel === 'bank_transfer' ? 'Sterling Bank' : undefined,
+          reference_code: channel === 'ussd' ? generatedUssdCode : undefined,
+          agent_code: channel === 'agent' ? 'AGENT-LAGOS-092' : undefined,
+          officer_name: channel === 'cash' ? selectedOfficer : undefined,
+        },
+        isRegistration ? 'registration' : isEquity ? 'equity' : 'monthly'
+      );
 
       if (res.success) {
-        toast.success('Contribution Recorded!', {
+        toast.success(isRegistration ? 'Registration Fee Paid!' : isEquity ? 'Member Equity Paid!' : 'Contribution Recorded!', {
           description: res.message,
         });
         setIsOpen(false);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to record contribution';
+      const msg = err instanceof Error ? err.message : 'Failed to record payment';
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -177,9 +210,20 @@ export function MakeContributionModal({
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button className='w-full cursor-pointer font-semibold' size='lg'>
+          <Button
+            className={`w-full cursor-pointer font-semibold ${
+              isEquity
+                ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
+                : ''
+            }`}
+            size='lg'
+          >
             <IconBuildingBank className='mr-2 h-5 w-5' />
-            Make Contribution (₦{amount.toLocaleString()})
+            {isRegistration
+              ? `Pay Registration Fee (₦${amount.toLocaleString()})`
+              : isEquity
+              ? `Pay Member Equity (₦${amount.toLocaleString()})`
+              : `Make Contribution (₦${amount.toLocaleString()})`}
           </Button>
         )}
       </DialogTrigger>
@@ -194,16 +238,21 @@ export function MakeContributionModal({
             className='h-28 w-auto mx-auto mb-1'
           />
           <div className='inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-xs font-medium text-primary mx-auto'>
-            Financial Inclusion Channels
+            {isRegistration ? 'One-time Member Onboarding Fee' : isEquity ? 'One-time Member Share Capital' : 'Financial Inclusion Channels'}
           </div>
           <DialogTitle className='text-xl font-bold text-center'>
-            Contribute to {targetSocietyName}
+            {isRegistration
+              ? `Pay Registration Fee — ${targetSocietyName}`
+              : isEquity
+              ? `Pay Member Equity Share Capital — ${targetSocietyName}`
+              : `Contribute to ${targetSocietyName}`}
           </DialogTitle>
           <DialogDescription className='text-center text-xs sm:text-sm max-w-md mx-auto'>
-            Choose your preferred contribution method. Minimum required amount for this cycle is{' '}
-            <strong className='text-foreground font-semibold'>
-              ₦{amount.toLocaleString()} ({frequency})
-            </strong>.
+            {isRegistration
+              ? `Pay the one-time registration fee of ₦${amount.toLocaleString()} to proceed to member onboarding.`
+              : isEquity
+              ? `Pay the one-time share capital equity amount of ₦${amount.toLocaleString()} to activate your full member status and start monthly savings.`
+              : `Choose your preferred contribution method. Minimum required amount for this cycle is ₦${amount.toLocaleString()} (${frequency}).`}
           </DialogDescription>
         </DialogHeader>
 
