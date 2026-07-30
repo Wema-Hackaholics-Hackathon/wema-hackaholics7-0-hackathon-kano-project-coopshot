@@ -2,6 +2,7 @@ import Image from 'next/image';
 import { Suspense } from 'react';
 import { getMyActiveSocieties } from '@/app/actions/societies';
 import { QuickCreateSociety } from '@/components/quick-create-society';
+import { JoinWithCode } from '@/components/join-with-code';
 import { MySocietiesView } from '@/components/my-societies-view';
 import { SkeletonCards } from '@/components/skeleton-cards';
 import { Card, CardHeader } from '@/components/ui/card';
@@ -25,7 +26,8 @@ async function SocietiesContent() {
           Join or create a society to start saving together with friends,
           family, or colleagues.
         </p>
-        <div className='flex items-center justify-center w-full'>
+        <div className='flex items-center justify-center gap-3 w-full'>
+          <JoinWithCode />
           <QuickCreateSociety from='page' />
         </div>
       </div>
@@ -48,7 +50,10 @@ export default function SocietiesPage() {
           </p>
         </div>
 
-        <QuickCreateSociety from='page' />
+        <div className='flex items-center gap-3'>
+          <JoinWithCode />
+          <QuickCreateSociety from='page' />
+        </div>
       </div>
 
       <Suspense

@@ -3,6 +3,7 @@ const { Group, GroupMember, Contribution, User, sequelize } = require('../models
 const asyncHandler = require('../utils/asyncHandler');
 const generateInviteCode = require('../utils/inviteCode');
 const { computeLoanEligibility } = require('../utils/loanEligibility');
+const { ensureRotationPositions } = require('./rotationController');
 
 function currentMonth() {
   return new Date().toISOString().slice(0, 7); // "YYYY-MM"
@@ -151,6 +152,11 @@ const startGroup = asyncHandler(async (req, res) => {
 
   group.status = 'active';
   await group.save();
+
+  // Assign the permanent rotation payout order now — join order is frozen
+  // from this point since invites/joins are already blocked once status
+  // leaves "forming".
+  await ensureRotationPositions(id);
 
   res.json(group);
 });

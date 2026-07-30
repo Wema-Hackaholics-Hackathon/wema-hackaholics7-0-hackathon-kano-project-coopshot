@@ -20,6 +20,8 @@ export interface SocietyProps {
   isCoFounder?: boolean;
   isExecutive?: boolean;
   current_user_id?: number;
+  invite_code?: string;
+  membership_status?: 'pending' | 'active';
 
   founder: {
     id: number;

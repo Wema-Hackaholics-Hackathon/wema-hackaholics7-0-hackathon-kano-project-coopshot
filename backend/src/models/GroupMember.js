@@ -26,6 +26,13 @@ const GroupMember = sequelize.define('GroupMember', {
     allowNull: false,
     defaultValue: 'active',
   },
+  // Permanent rotation payout order (1-indexed), assigned once when the group
+  // starts (join order at that moment) — null until then. New members can't
+  // join after start anyway, so this never needs reassigning.
+  rotationPosition: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
 }, {
   tableName: 'group_members',
   timestamps: true,

@@ -18,6 +18,7 @@ const { inviteToGroup } = require('../controllers/inviteController');
 const { getGroupLedger, getNextDueDate, getMyPenalties } = require('../controllers/ledgerController');
 const { listDocuments, uploadDocument } = require('../controllers/documentController');
 const { requestLoan, getMyLoans, getGroupLoans, decideLoan } = require('../controllers/loanController');
+const { getRotationQueue, distributeRotationPayout } = require('../controllers/rotationController');
 const { protect } = require('../middleware/auth');
 const { avatarUpload, documentUpload } = require('../middleware/upload');
 
@@ -53,5 +54,8 @@ router.post('/:id/loans', requestLoan);
 router.get('/:id/loans/mine', getMyLoans);
 router.get('/:id/loans', getGroupLoans);
 router.patch('/:id/loans/:loanId/decision', decideLoan);
+
+router.get('/:id/rotation', getRotationQueue);
+router.post('/:id/rotation/distribute', distributeRotationPayout);
 
 module.exports = router;

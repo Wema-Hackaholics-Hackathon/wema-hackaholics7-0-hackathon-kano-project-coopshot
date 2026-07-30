@@ -3,6 +3,57 @@
 import { apiFetch } from '@/lib/api';
 import { revalidatePath } from 'next/cache';
 
+// Real Paystack flow — was fully built on the backend (POST /contributions/initiate,
+// GET /contributions/verify/:reference) but never called from anywhere in the
+// frontend. Uses Paystack Inline (embedded popup, no page redirect): this
+// action only creates the pending Contribution row server-side and returns
+// the reference/amount Inline needs; the actual charge happens client-side
+// in <PaystackPayButton>, then verifyPaystackPayment reconciles the result.
+export async function initiatePaystackPayment(
+  groupId: string,
+  type: 'registration' | 'equity' | 'monthly'
+) {
+  const res = await apiFetch(
+    '/contributions/initiate',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ groupId, type }),
+    },
+    true
+  );
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || 'Failed to start payment');
+  }
+
+  return {
+    reference: data.reference as string,
+    amountInKobo: Number(data.amount),
+    email: data.email as string,
+  };
+}
+
+export async function verifyPaystackPayment(reference: string) {
+  const res = await apiFetch(`/contributions/verify/${reference}`, { method: 'GET', cache: 'no-store' }, true);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || 'Failed to verify payment');
+  }
+
+  revalidatePath('/dashboard');
+  revalidatePath(`/dashboard/societies/${data.groupId}`);
+  revalidatePath(`/dashboard/societies/${data.groupId}/ledger`);
+
+  return {
+    status: data.status as 'success' | 'pending' | 'failed',
+    amount: Number(data.amount),
+    groupId: String(data.groupId),
+    type: data.type as 'registration' | 'equity' | 'monthly',
+  };
+}
+
 // Real backend note: unlike Paystack (verified automatically by the gateway),
 // there's no way to verify a bank transfer, USSD payment, agent deposit, or
 // handed-over cash from the server side alone. This backend records these as

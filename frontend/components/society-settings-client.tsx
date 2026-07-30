@@ -28,8 +28,10 @@ import {
   IconTrendingUp,
   IconSettings,
   IconInfoCircle,
+  IconCopy,
+  IconTicket,
 } from '@tabler/icons-react';
-import { toggleSocietyVisibility, updateSocietyAvatar } from '@/app/actions/societies';
+import { startSociety, toggleSocietyVisibility, updateSocietyAvatar } from '@/app/actions/societies';
 import { SocietyDocument, SocietyProps } from '@/types';
 import { toast } from 'sonner';
 import EditSettingsModal from './edit-settings-modal';
@@ -67,6 +69,27 @@ export default function SocietySettingsClient({
 
   const canInviteCoFounder =
     society.isFounder && !society.co_founder && society.can_manage;
+
+  const handleCopyInviteCode = () => {
+    if (!society.invite_code) return;
+    navigator.clipboard.writeText(society.invite_code);
+    toast.success('Invite code copied!');
+  };
+
+  const handleStartSociety = () => {
+    if (!confirm("Start this society? This closes the invite code to new members and opens up monthly contributions — this cannot be undone.")) {
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await startSociety(society.id.toString());
+        setSociety({ ...society, verified: true });
+        toast.success('Society started! Monthly contributions are now open.');
+      } catch (err: any) {
+        toast.error(err.message || 'Failed to start society');
+      }
+    });
+  };
 
   return (
     <div className='space-y-6'>
@@ -112,32 +135,59 @@ export default function SocietySettingsClient({
         <CardHeader>
           <CardTitle className='flex items-center gap-2'>
             <IconIdBadge2 className='h-5 w-5' />
-            Verification Status
+            Society Status
           </CardTitle>
           <CardDescription>
-            Verified societies can invite members and start contributions.
+            Starting a society closes its invite code to new members and opens up monthly contributions.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-3'>
               {society.verified ? (
-                <Badge variant='default'>Verified</Badge>
+                <Badge variant='default'>Active</Badge>
               ) : (
-                <Badge variant='secondary'>Unverified</Badge>
+                <Badge variant='secondary'>Forming</Badge>
               )}
               <span className='text-sm text-muted-foreground'>
                 {society.verified
-                  ? 'Your society is fully verified.'
-                  : 'Verification required to unlock full features.'}
+                  ? 'This society has started — contributions are open.'
+                  : 'Still forming — accepting new members, contributions not yet open.'}
               </span>
             </div>
             {!society.verified && society.can_manage && (
-              <Button variant='outline'>Verify Now</Button>
+              <Button variant='outline' onClick={handleStartSociety} disabled={pending}>
+                {pending ? 'Starting...' : 'Start Society'}
+              </Button>
             )}
           </div>
         </CardContent>
       </Card>
+
+      {society.can_manage && society.invite_code && (
+        <Card>
+          <CardHeader>
+            <CardTitle className='flex items-center gap-2'>
+              <IconTicket className='h-5 w-5' />
+              Invite Code
+            </CardTitle>
+            <CardDescription>
+              Share this code with anyone you want to join this private society.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className='flex items-center justify-between rounded-lg border bg-muted/40 px-4 py-3'>
+              <span className='font-mono text-lg font-bold tracking-widest text-foreground'>
+                {society.invite_code}
+              </span>
+              <Button variant='outline' size='sm' onClick={handleCopyInviteCode} className='cursor-pointer'>
+                <IconCopy className='mr-2 h-4 w-4' />
+                Copy
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Separator />
 

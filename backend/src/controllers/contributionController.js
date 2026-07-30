@@ -150,6 +150,8 @@ const initiateContribution = asyncHandler(async (req, res) => {
   res.status(201).json({
     authorizationUrl: paystackData.authorization_url,
     reference: paystackData.reference,
+    amount: amountInKobo,
+    email: req.user.email,
   });
 });
 

@@ -5,7 +5,6 @@ import { apiFetch } from '@/lib/api';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from './getCurrentUser';
 import { Member, SocietyDocument, SocietyProps } from '@/types';
-import { MOCK_MEMBERS } from '@/lib/mock-data';
 
 function serializeDiscoveredGroup(g: any): SocietyProps {
   return {
@@ -14,7 +13,7 @@ function serializeDiscoveredGroup(g: any): SocietyProps {
     avatar_url: g.avatarUrl || '',
     description: g.description || '',
     is_public: true,
-    verified: false,
+    verified: g.status === 'active',
     created_at: g.createdAt,
     total_members: g.memberCount ?? 0,
     member_count: g.memberCount ?? 0,
@@ -104,6 +103,30 @@ export async function joinPublicSociety(societyId: string) {
   return res.json();
 }
 
+// Join a private society using its invite code — real POST /groups/join.
+// Never wired anywhere in the UI (no form existed to call it), even though
+// it's this backend's primary join mechanism for non-public societies.
+export async function joinSocietyWithCode(inviteCode: string) {
+  const res = await apiFetch(
+    '/groups/join',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inviteCode: inviteCode.trim().toUpperCase() }),
+    },
+    true
+  );
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || 'Failed to join society');
+  }
+
+  revalidatePath('/dashboard');
+  revalidatePath('/dashboard/societies');
+  return data;
+}
+
 // Real backend call. Note: this backend's groups have concepts asusu's mock
 // SocietyProps doesn't (a pending-registration-fee gate, forming/active
 // lifecycle) and asusu has concepts this backend doesn't (co-founder,
@@ -138,7 +161,7 @@ export async function getSociety(id: string): Promise<SocietyProps> {
         avatar_url: group.avatarUrl || '',
         description: group.description || '',
         is_public: !!group.isPublic,
-        verified: false,
+        verified: group.status === 'active',
         created_at: group.createdAt || new Date().toISOString(),
         total_members: group.memberCount ?? 0,
         total_contributions: 0,
@@ -173,7 +196,8 @@ export async function getSociety(id: string): Promise<SocietyProps> {
       avatar_url: group.avatarUrl || '',
       description: group.description || '',
       is_public: !!group.isPublic,
-      verified: false,
+      verified: group.status === 'active',
+      invite_code: group.inviteCode,
       created_at: group.createdAt || new Date().toISOString(),
       total_members: group.members?.length || group.memberCount || 0,
       total_contributions: Number(group.totalCollected || 0),
@@ -317,71 +341,48 @@ export async function getSocietyLedger(id: string) {
   };
 }
 
-// Intentionally still mock: this backend has no rotating-payout concept at
-// all. Contributions fund a pooled treasury bill investment (5% of each
-// monthly contribution), not a rotating "whose turn is it" payout — building
-// a real rotation queue would mean inventing a different product mechanic,
-// not just wiring an endpoint. See asusu/BACKEND_INTEGRATION.md.
+// Real: this backend has an actual rotation mechanic (see
+// backend/src/controllers/rotationController.js) — a permanent payout order
+// assigned once when the group starts, cycling through members monthly,
+// paid out from that month's real collected contributions by an admin
+// action. GET /groups/:id/rotation returns an honest empty queue for a
+// group that hasn't started yet, rather than an error.
 export async function getSocietyRotationQueue(id: string) {
-  const user = await getCurrentUser();
-
-  /* ORIGINAL BACKEND CALL:
-  const res = await apiFetch(
-    `/societies/${id}/rotation`,
-    {
-      method: 'GET',
-      next: { revalidate: 60 },
-    },
-    true
-  );
+  const [society, res] = await Promise.all([
+    getSociety(id),
+    apiFetch(`/groups/${id}/rotation`, { method: 'GET', cache: 'no-store' }, true),
+  ]);
 
   if (!res.ok) throw new Error('Failed to fetch rotation queue');
   const data = await res.json();
 
-  const isFounder = data.society.founder?.id === user?.id;
-  const isCoFounder = data.society.co_founder?.id === user?.id;
-
-  const canManage = isFounder || isCoFounder;
-
   return {
-    society: {
-      ...data.society,
-      current_user_id: user?.id,
-      isFounder,
-      isCoFounder,
-      can_manage: canManage,
-    },
-    members: data.members,
-    rotation: data.rotation,
-  };
-  */
-
-  const society = await getSociety(id);
-  const userId = user?.id ? Number(user.id) : undefined;
-  const isFounder = society.founder?.id === userId;
-  const isCoFounder = society.co_founder?.id === userId;
-
-  const queue = MOCK_MEMBERS.map((m) => ({
-    user_id: m.id,
-    name: m.name,
-    avatar_url: m.profile?.avatar_url || null,
-  }));
-
-  return {
-    society: {
-      ...society,
-      current_user_id: userId,
-      isFounder,
-      isCoFounder,
-      can_manage: isFounder || isCoFounder,
-    },
-    members: MOCK_MEMBERS,
+    society,
     rotation: {
-      queue,
-      my_position: 1,
-      next_up: queue[0] || null,
-      cycle: society.settings?.frequency || 'monthly',
+      queue: data.queue,
+      my_position: data.my_position,
+      next_up: data.next_up,
+      cycle: data.cycle,
+      started: data.started,
+      history: data.history,
     },
+  };
+}
+
+export async function distributeRotationPayout(societyId: string) {
+  const res = await apiFetch(`/groups/${societyId}/rotation/distribute`, { method: 'POST' }, true);
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data.message || 'Failed to distribute rotation payout');
+  }
+
+  revalidatePath(`/dashboard/societies/${societyId}/rotation`);
+  revalidatePath(`/dashboard/societies/${societyId}/ledger`);
+
+  return {
+    success: true,
+    message: `₦${Number(data.amount).toLocaleString()} distributed to this month's recipient.`,
   };
 }
 
@@ -459,8 +460,9 @@ export async function createSociety(formData: FormData) {
     name: group.name,
     description: group.description || '',
     avatar_url: '',
-    is_public: false,
-    verified: false,
+    is_public: !!group.isPublic,
+    verified: group.status === 'active',
+    invite_code: group.inviteCode,
     created_at: group.createdAt,
     total_members: 1,
     member_count: 1,
@@ -531,6 +533,21 @@ export async function inviteCoFounder(societyId: string, email: string) {
   revalidatePath(`/dashboard/societies/${societyId}/settings`);
   revalidatePath(`/dashboard/societies/${societyId}`);
   return { message: `Co-founder invitation sent to ${email}`, invite: data };
+}
+
+// Admin-only, one-way: flips the group from "forming" to "active", closing
+// the invite code to new members and opening up monthly contributions.
+export async function startSociety(societyId: string) {
+  const res = await apiFetch(`/groups/${societyId}/start`, { method: 'POST' }, true);
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to start society');
+  }
+
+  revalidatePath(`/dashboard/societies/${societyId}/settings`);
+  revalidatePath(`/dashboard/societies/${societyId}`);
+  return { success: true };
 }
 
 export async function toggleSocietyVisibility(
@@ -672,11 +689,9 @@ export async function getMyActiveSocieties() {
     name: g.name,
     description: g.description || '',
     avatar_url: '',
-    is_public: false,
-    verified: false,
-    // asusu has no concept of the one-time registration fee this backend
-    // gates monthly contributions behind — a "pending" membership just shows
-    // as a normal member card here rather than the real payment-due state.
+    is_public: !!g.isPublic,
+    verified: g.status === 'active',
+    membership_status: g.membershipStatus as 'pending' | 'active',
     role: g.myRole === 'admin' ? 'founder' : 'member',
     total_members: g.memberCount ?? 0,
     settings: {

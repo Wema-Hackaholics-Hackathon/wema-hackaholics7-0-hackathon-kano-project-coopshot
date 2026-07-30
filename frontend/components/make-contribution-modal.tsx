@@ -27,10 +27,12 @@ import {
   IconIdBadge2,
   IconInfoCircle,
   IconBuildingCommunity,
+  IconCreditCard,
 } from '@tabler/icons-react';
 import { toast } from 'sonner';
 import { submitContribution } from '@/app/actions/contribution';
 import { getMyActiveSocieties } from '@/app/actions/societies';
+import { PaystackPayButton } from './paystack-pay-button';
 
 export interface CooperativeOption {
   id: string | number;
@@ -286,14 +288,22 @@ export function MakeContributionModal({
         )}
 
         <Tabs
-          defaultValue='bank_transfer'
+          defaultValue='card'
           onValueChange={(val) =>
             setSelectedChannel(val as 'bank_transfer' | 'ussd' | 'agent' | 'cash')
           }
           className='w-full space-y-4 py-2'
         >
           {/* Channel Selector Tabs */}
-          <TabsList className='grid grid-cols-4 w-full group-data-horizontal/tabs:h-auto! h-auto! p-1.5 bg-muted/80 rounded-xl gap-1'>
+          <TabsList className='grid grid-cols-5 w-full group-data-horizontal/tabs:h-auto! h-auto! p-1.5 bg-muted/80 rounded-xl gap-1'>
+            <TabsTrigger
+              value='card'
+              className='flex flex-col items-center justify-center gap-1.5 h-auto! py-2.5 text-xs font-medium cursor-pointer rounded-lg'
+            >
+              <IconCreditCard className='h-4 w-4 shrink-0' />
+              <span>Card</span>
+            </TabsTrigger>
+
             <TabsTrigger
               value='bank_transfer'
               className='flex flex-col items-center justify-center gap-1.5 h-auto! py-2.5 text-xs font-medium cursor-pointer rounded-lg'
@@ -326,6 +336,22 @@ export function MakeContributionModal({
               <span>Cash</span>
             </TabsTrigger>
           </TabsList>
+
+          {/* 0. Real Paystack Card Payment — the only channel verified automatically */}
+          <TabsContent value='card' className='space-y-4 pt-2'>
+            <div className='rounded-xl border bg-card p-5 space-y-4 shadow-2xs text-center'>
+              <p className='text-sm text-muted-foreground'>
+                Pay <strong className='text-foreground'>₦{amount.toLocaleString()}</strong> by card,
+                bank, or transfer via Paystack — confirmed instantly, no admin approval needed.
+              </p>
+              <PaystackPayButton
+                groupId={String(selectedCoop.id || society?.id || '1')}
+                type={isRegistration ? 'registration' : isEquity ? 'equity' : 'monthly'}
+                label={`Pay ₦${amount.toLocaleString()} Now`}
+                onSuccess={() => setIsOpen(false)}
+              />
+            </div>
+          </TabsContent>
 
           {/* 1. Bank Transfer Channel */}
           <TabsContent value='bank_transfer' className='space-y-4 pt-2'>

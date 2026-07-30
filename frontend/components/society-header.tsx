@@ -14,7 +14,6 @@ import {
   IconIdBadge2,
   IconUsers,
   IconCode,
-  IconHistory,
   IconGitBranch,
   IconCash,
   IconRefresh,
@@ -68,10 +67,10 @@ const SocietyHeader: React.FC<{ society: SocietyProps }> = ({ society }) => {
                         className='flex items-center gap-1 text-xs'
                       >
                         <IconIdBadge2 className='h-3 w-3' />
-                        Verified
+                        Active
                       </Badge>
                     ) : (
-                      <Badge variant='secondary' className='text-xs'>Unverified</Badge>
+                      <Badge variant='secondary' className='text-xs'>Forming</Badge>
                     )}
                     <Badge variant={society.is_public ? 'outline' : 'secondary'} className='text-xs'>
                       {society.is_public ? 'Public' : 'Private'}
@@ -157,19 +156,6 @@ const SocietyHeader: React.FC<{ society: SocietyProps }> = ({ society }) => {
                 >
                   <IconUsers className='h-4 w-4 min-w-4' />
                   <span>Members</span>
-                  {isNonMember && <IconLock className='h-3.5 w-3.5 text-amber-500' />}
-                </Link>
-
-                <Link
-                  href={`/dashboard/societies/${id}/activity`}
-                  className={`flex items-center gap-2 h-14 border-b-2 text-sm min-w-max transition-colors ${
-                    isActive(`/dashboard/societies/${id}/activity`)
-                      ? 'border-primary text-primary font-medium'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <IconHistory className='h-4 w-4 min-w-4' />
-                  <span>Activity</span>
                   {isNonMember && <IconLock className='h-3.5 w-3.5 text-amber-500' />}
                 </Link>
 
@@ -262,8 +248,8 @@ const SocietyHeader: React.FC<{ society: SocietyProps }> = ({ society }) => {
               <div className='flex items-center gap-3'>
                 <IconAlertCircle className='h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0' />
                 <AlertDescription className='text-foreground font-medium text-sm'>
-                  Your society is not verified yet. Would you like to verify it
-                  now?
+                  This society hasn&apos;t started yet — monthly contributions
+                  won&apos;t open until you start it. Go to Settings?
                 </AlertDescription>
               </div>
               <IconChevronRight className='h-5 w-5 text-muted-foreground' />
